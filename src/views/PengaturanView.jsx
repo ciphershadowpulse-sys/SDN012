@@ -1,0 +1,226 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Settings, User, Building, Sparkles, Save, CheckCircle2, 
+  ShieldCheck, BellRing, Database, Lock, Key, Globe
+} from 'lucide-react';
+
+export default function PengaturanView() {
+  const [profile, setProfile] = useState({
+    nama: 'Pak Budi, S.Pd',
+    nip: '19850412 201001 1 008',
+    mapel: 'Matematika Peminatan & Fisika',
+    email: 'budi.matematika@sekolah.sch.id',
+    phone: '081234567890',
+    namaSekolah: 'SMA Negeri 1 Jakarta',
+    tahunAjaran: '2026/2027 (Semester Ganjil)',
+    kkmDefault: 75,
+    kurikulum: 'Kurikulum Merdeka',
+    aiModel: 'Gemini 3.6 Pro (Fast & Accurate)',
+    autoWaAlert: true,
+    supabaseStatus: 'Terhubung (Cloud Synchronized)'
+  });
+
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    setToastMsg('Pengaturan Akun & Identitas Sekolah Berhasil Disimpan!');
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -15 }}
+      className="p-8 space-y-8 overflow-y-auto flex-1 text-gray-100 relative"
+    >
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toastMsg && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+          >
+            <CheckCircle2 className="w-5 h-5" /> {toastMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* HEADER */}
+      <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-purple-500/10 border border-purple-500/20 text-primaryPurple rounded-xl">
+            <Settings className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-white">Pengaturan Akun Guru & Konfigurasi Sekolah</h3>
+            <p className="text-xs text-gray-400">Atur profil, identitas kurikulum, dan integrasi kecerdasan buatan AI</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={handleSave}
+          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
+        >
+          <Save className="w-4 h-4" /> Simpan Pengaturan
+        </button>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-8">
+        {/* SEKSI 1: PROFIL GURU */}
+        <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl space-y-6">
+          <div className="flex items-center gap-3 border-b border-cardBorder pb-4">
+            <User className="w-5 h-5 text-primaryPurple" />
+            <h4 className="font-bold text-base text-white">Profil Pengajar / Guru</h4>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Nama Lengkap & Gelar</label>
+              <input 
+                type="text"
+                value={profile.nama}
+                onChange={(e) => setProfile({ ...profile, nama: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">NIP (Nomor Induk Pegawai)</label>
+              <input 
+                type="text"
+                value={profile.nip}
+                onChange={(e) => setProfile({ ...profile, nip: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Mata Pelajaran Utama</label>
+              <input 
+                type="text"
+                value={profile.mapel}
+                onChange={(e) => setProfile({ ...profile, mapel: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Email Akun Belajar.id</label>
+              <input 
+                type="email"
+                value={profile.email}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* SEKSI 2: IDENTITAS SEKOLAH & KURIKULUM */}
+        <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl space-y-6">
+          <div className="flex items-center gap-3 border-b border-cardBorder pb-4">
+            <Building className="w-5 h-5 text-accentBlue" />
+            <h4 className="font-bold text-base text-white">Identitas Sekolah & Standar KKM</h4>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Nama Instansi / Sekolah</label>
+              <input 
+                type="text"
+                value={profile.namaSekolah}
+                onChange={(e) => setProfile({ ...profile, namaSekolah: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Tahun Ajaran & Semester</label>
+              <input 
+                type="text"
+                value={profile.tahunAjaran}
+                onChange={(e) => setProfile({ ...profile, tahunAjaran: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">KKM (Kriteria Ketuntasan Minimal)</label>
+              <input 
+                type="number"
+                min="0"
+                max="100"
+                value={profile.kkmDefault}
+                onChange={(e) => setProfile({ ...profile, kkmDefault: Number(e.target.value) })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Model Kurikulum Acuan</label>
+              <select 
+                value={profile.kurikulum}
+                onChange={(e) => setProfile({ ...profile, kurikulum: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              >
+                <option value="Kurikulum Merdeka">Kurikulum Merdeka</option>
+                <option value="K13 Revisi 2018">K13 Revisi 2018</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* SEKSI 3: INTEGRASI AI & CLOUD */}
+        <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl space-y-6">
+          <div className="flex items-center gap-3 border-b border-cardBorder pb-4">
+            <Sparkles className="w-5 h-5 text-amber-400" />
+            <h4 className="font-bold text-base text-white">Integrasi Asisten AI & Cloud Sync</h4>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Mesin AI Rekomendasi Guru</label>
+              <select 
+                value={profile.aiModel}
+                onChange={(e) => setProfile({ ...profile, aiModel: e.target.value })}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+              >
+                <option value="Gemini 3.6 Pro (Fast & Accurate)">Gemini 3.6 Pro (Fast & Accurate)</option>
+                <option value="Cloudflare Workers AI (Edge Deployment)">Cloudflare Workers AI (Edge Deployment)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Status Sinkronisasi Database</label>
+              <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs text-emerald-400 font-semibold">
+                <Database className="w-4 h-4 text-emerald-400" /> {profile.supabaseStatus}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-darkBg rounded-xl border border-cardBorder">
+            <div className="flex items-center gap-3">
+              <BellRing className="w-5 h-5 text-purple-400" />
+              <div>
+                <h5 className="font-semibold text-sm text-white">Notifikasi Warning WhatsApp Ortu Otomatis</h5>
+                <p className="text-xs text-gray-400">Aktifkan pembuatan tautan WhatsApp peringatan ketidakhadiran secara otomatis</p>
+              </div>
+            </div>
+
+            <input 
+              type="checkbox"
+              checked={profile.autoWaAlert}
+              onChange={(e) => setProfile({ ...profile, autoWaAlert: e.target.checked })}
+              className="w-5 h-5 accent-primaryPurple cursor-pointer"
+            />
+          </div>
+        </div>
+      </form>
+    </motion.div>
+  );
+}

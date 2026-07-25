@@ -1,0 +1,8 @@
+name = "Digital-Guru"
+pages_build_output_dir = "./dist"
+
+[site]
+bucket = "./dist"
+
+[vars]
+VITE_APP_TITLE = "Digital Guru - Portal Wali Kelas"
