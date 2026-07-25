@@ -1,4 +1,4 @@
-name = "Digital-Guru"
+name = "digital-guru"
 pages_build_output_dir = "./dist"
 
 [site]
