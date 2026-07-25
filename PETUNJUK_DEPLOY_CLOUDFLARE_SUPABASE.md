@@ -1,6 +1,6 @@
 # 🚀 Panduan Deployment Mandiri: Cloudflare Pages & Supabase
 
-Aplikasi **Guru AI Pro** dirancang secara **Dual-Mode System**:
+Aplikasi **Digital Guru** dirancang secara **Dual-Mode System**:
 1. **Mode Mandiri / Standalone (Bawaan)**: Berjalan 100% tanpa perlu server backend eksternal.
 2. **Mode Live Supabase Sync**: Otomatis terhubung dengan basis data cloud Supabase ketika Kunci API disetel.
 
@@ -19,7 +19,7 @@ Aplikasi **Guru AI Pro** dirancang secara **Dual-Mode System**:
 
 ## 🌐 2. Deployment ke Cloudflare Pages
 
-### CARA A: Via GitHub Repository (Disarankan & Otomatis)
+### CARA A: Via Git Integration / GitHub (Paling Mudah & Otomatis)
 
 1. Upload/Push proyek ini ke repositori **GitHub** Anda.
 2. Masuk ke [Cloudflare Dashboard ➔ Workers & Pages](https://dash.cloudflare.com/).
@@ -28,23 +28,21 @@ Aplikasi **Guru AI Pro** dirancang secara **Dual-Mode System**:
    - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-5. Pada bagian **Environment variables (advanced)**, tambahkan 2 variabel:
+5. Pada bagian **Environment variables (advanced)**, tambahkan 2 variabel lingkungan (opsional untuk live Supabase):
    - `VITE_SUPABASE_URL` = *(Project URL Supabase Anda)*
    - `VITE_SUPABASE_ANON_KEY` = *(Anon Public Key Supabase Anda)*
-6. Klik **Save and Deploy**. Cloudflare Pages akan memproses build dalam 1-2 menit dan memberikan subdomain gratis seperti `https://guru-ai-pro.pages.dev`!
+6. Klik **Save and Deploy**. Cloudflare Pages akan memproses build secara otomatis dan memberikan URL live seperti `https://digital-guru.pages.dev`!
 
 ---
 
-### CARA B: Via Command Line (Wrangler CLI)
-
-Jika Anda ingin deploy langsung dari terminal komputer tanpa GitHub:
+### CARA B: Via Terminal CLI (Wrangler Pages)
 
 ```bash
 # 1. Jalankan build produksi
 npm run build
 
-# 2. Deploy dist ke Cloudflare Pages secara langsung
-npx wrangler pages deploy dist --project-name=guru-ai-pro
+# 2. Deploy folder dist langsung ke Cloudflare Pages
+npx wrangler pages deploy dist --project-name=digital-guru
 ```
 
 ---
@@ -52,6 +50,6 @@ npx wrangler pages deploy dist --project-name=guru-ai-pro
 ## 🛠️ Berkas Konfigurasi Utama dalam Proyek:
 
 - [`public/_redirects`](file:///c:/Users/Monk/Downloads/vite-project/public/_redirects): Mencegah error 404 pada Cloudflare Pages saat refresh halaman (*SPA Client Routing*).
-- [`wrangler.toml`](file:///c:/Users/Monk/Downloads/vite-project/wrangler.toml): Konfigurasi CLI Cloudflare Wrangler.
+- [`public/_routes.json`](file:///c:/Users/Monk/Downloads/vite-project/public/_routes.json): Konfigurasi pemetaan rute statis Cloudflare Pages.
 - [`src/lib/supabase.js`](file:///c:/Users/Monk/Downloads/vite-project/src/lib/supabase.js): Modul klien Supabase dengan *fallback* aman ke state lokal.
 - [`supabase_schema.sql`](file:///c:/Users/Monk/Downloads/vite-project/supabase_schema.sql): Skema basis data SQL siap dieksekusi di Supabase.
