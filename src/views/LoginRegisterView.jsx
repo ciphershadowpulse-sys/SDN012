@@ -213,7 +213,7 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
                       required
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
-                      placeholder="Contoh: walikelas1"
+                      placeholder="Masukkan Username terdaftar Anda..."
                       className="w-full pl-10 pr-4 py-3 bg-darkBg border border-cardBorder rounded-xl text-sm text-white focus:outline-none focus:border-primaryPurple"
                     />
                   </div>
