@@ -204,7 +204,15 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'chat' && <ChatAIView key="chat" />}
+            {activeTab === 'chat' && (
+              <ChatAIView 
+                key="chat" 
+                currentUser={currentUser}
+                students={homeroomStudents}
+                attendanceRecap={attendanceRecap}
+                grades={grades}
+              />
+            )}
             
             {activeTab === 'analytics' && (
               <AnalisisKelasView 
