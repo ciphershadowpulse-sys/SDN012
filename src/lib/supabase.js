@@ -286,3 +286,95 @@ export async function saveGradesSupabase(gradesArray) {
     return { success: false, error: err.message };
   }
 }
+
+// ==========================================
+// 6. TEACHING SCHEDULES / JADWAL MENGAJAR
+// ==========================================
+export async function fetchTeachingSchedulesSupabase(defaultSchedules) {
+  if (!isSupabaseConfigured || !supabase) return defaultSchedules;
+  try {
+    const { data, error } = await supabase.from('teaching_schedules').select('*');
+    if (error || !data || data.length === 0) return defaultSchedules;
+    return data.map(s => ({
+      id: s.id,
+      hari: s.hari,
+      jam: s.jam,
+      kelas: s.kelas,
+      mapel: s.mapel,
+      ruangan: s.ruangan,
+      topik: s.topik,
+      status: s.status || 'Belum Dimulai'
+    }));
+  } catch (err) {
+    console.warn('Gagal memuat jadwal mengajar dari Supabase:', err);
+    return defaultSchedules;
+  }
+}
+
+export async function saveTeachingScheduleSupabase(schedule) {
+  if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
+  try {
+    const payload = {
+      id: schedule.id || `SCH-${Date.now()}`,
+      hari: schedule.hari,
+      jam: schedule.jam,
+      kelas: schedule.kelas,
+      mapel: schedule.mapel,
+      ruangan: schedule.ruangan,
+      topik: schedule.topik,
+      status: schedule.status || 'Belum Dimulai'
+    };
+    const { data, error } = await supabase.from('teaching_schedules').upsert([payload]);
+    if (error) throw error;
+    return { success: true, data, mode: 'supabase' };
+  } catch (err) {
+    console.error('Gagal menyimpan jadwal mengajar ke Supabase:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ==========================================
+// 7. LESSON PLANS / BANK MODUL & RPP
+// ==========================================
+export async function fetchLessonPlansSupabase(defaultPlans) {
+  if (!isSupabaseConfigured || !supabase) return defaultPlans;
+  try {
+    const { data, error } = await supabase.from('lesson_plans').select('*');
+    if (error || !data || data.length === 0) return defaultPlans;
+    return data.map(p => ({
+      id: p.id,
+      judul: p.judul,
+      kelas: p.kelas,
+      mapel: p.mapel,
+      fase: p.fase || 'Fase F',
+      ringkasan: p.ringkasan,
+      fileUrl: p.file_url || p.fileUrl || '/docs/modul_vektor.pdf',
+      status: p.status || 'Terverifikasi'
+    }));
+  } catch (err) {
+    console.warn('Gagal memuat modul/RPP dari Supabase:', err);
+    return defaultPlans;
+  }
+}
+
+export async function saveLessonPlanSupabase(plan) {
+  if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
+  try {
+    const payload = {
+      id: plan.id || `RPP-${Date.now()}`,
+      judul: plan.judul,
+      kelas: plan.kelas,
+      mapel: plan.mapel,
+      fase: plan.fase || 'Fase F',
+      ringkasan: plan.ringkasan || '',
+      file_url: plan.fileUrl || plan.file_url || '',
+      status: plan.status || 'Terverifikasi'
+    };
+    const { data, error } = await supabase.from('lesson_plans').upsert([payload]);
+    if (error) throw error;
+    return { success: true, data, mode: 'supabase' };
+  } catch (err) {
+    console.error('Gagal menyimpan modul/RPP ke Supabase:', err);
+    return { success: false, error: err.message };
+  }
+}
