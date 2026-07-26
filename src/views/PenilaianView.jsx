@@ -4,6 +4,8 @@ import {
   GraduationCap, Award, Sparkles, Save, Search, Filter, 
   CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, ChevronRight, BookOpen
 } from 'lucide-react';
+import { saveGradesSupabase } from '../lib/supabase';
+
 
 export default function PenilaianView({ students, classes, grades, setGrades }) {
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
@@ -135,6 +137,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
 
   // Save Grades Action
   const handleSaveGrades = () => {
+    saveGradesSupabase(grades);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 3500);
   };

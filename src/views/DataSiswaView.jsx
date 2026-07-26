@@ -5,6 +5,8 @@ import {
   X, Check, UserCheck, Phone, Mail, MapPin, FileText, AlertCircle,
   Download, Upload, FileSpreadsheet, CheckCircle2, Sparkles
 } from 'lucide-react';
+import { saveStudentSupabase, deleteStudentSupabase } from '../lib/supabase';
+
 
 export default function DataSiswaView({ students, setStudents, classes }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,13 +79,16 @@ export default function DataSiswaView({ students, setStudents, classes }) {
     }
 
     if (editingStudent) {
-      setStudents(students.map(s => s.id === editingStudent.id ? { ...formData, id: s.id } : s));
+      const updated = { ...formData, id: editingStudent.id };
+      saveStudentSupabase(updated);
+      setStudents(students.map(s => s.id === editingStudent.id ? updated : s));
       showToast(`Data siswa "${formData.nama}" berhasil diperbarui!`);
     } else {
       const newStudent = {
         ...formData,
         id: `STU-${String(students.length + 1).padStart(3, '0')}`
       };
+      saveStudentSupabase(newStudent);
       setStudents([...students, newStudent]);
       showToast(`Siswa baru "${formData.nama}" berhasil ditambahkan!`);
     }
@@ -93,6 +98,7 @@ export default function DataSiswaView({ students, setStudents, classes }) {
   // Delete student
   const handleDelete = (id, nama) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus data siswa "${nama}"?`)) {
+      deleteStudentSupabase(id);
       setStudents(students.filter(s => s.id !== id));
       if (detailStudent && detailStudent.id === id) {
         setDetailStudent(null);
@@ -176,6 +182,7 @@ export default function DataSiswaView({ students, setStudents, classes }) {
       id: `STU-${String(students.length + idx + 1).padStart(3, '0')}`
     }));
 
+    newStudentsList.forEach(s => saveStudentSupabase(s));
     setStudents([...students, ...newStudentsList]);
     setIsImportModalOpen(false);
     setImportCsvText('');

@@ -92,8 +92,13 @@ ON CONFLICT (id) DO NOTHING;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_attendances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_recap ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
 
 -- POLICY PUBLIC ACCESS FOR DEMO
 CREATE POLICY "Public Profiles Access" ON public.profiles FOR ALL USING (true);
 CREATE POLICY "Public Students Access" ON public.students FOR ALL USING (true);
 CREATE POLICY "Public Attendances Access" ON public.daily_attendances FOR ALL USING (true);
+CREATE POLICY "Public Attendance Recap Access" ON public.attendance_recap FOR ALL USING (true);
+CREATE POLICY "Public Grades Access" ON public.grades FOR ALL USING (true);
+
