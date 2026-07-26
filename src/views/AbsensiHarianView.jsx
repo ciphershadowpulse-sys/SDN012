@@ -463,68 +463,68 @@ export default function AbsensiHarianView({
       {/* MODAL SCANNER QR CODE (HANYA MENAMPILKAN KAMERA) */}
       <AnimatePresence>
         {isQrModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-cardBg border border-cardBorder rounded-2xl w-full max-w-sm sm:max-w-md overflow-hidden shadow-2xl flex flex-col"
+              className="bg-cardBg border border-cardBorder rounded-2xl w-full max-w-[320px] sm:max-w-sm overflow-hidden shadow-2xl flex flex-col"
             >
               {/* Header Modal */}
-              <div className="px-4 py-3 border-b border-cardBorder flex items-center justify-between bg-darkBg/80">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-purple-500/20 text-purple-300 rounded-lg">
-                    <QrCode className="w-4 h-4" />
+              <div className="px-3.5 py-2.5 border-b border-cardBorder flex items-center justify-between bg-darkBg/80">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-purple-500/20 text-purple-300 rounded-md">
+                    <QrCode className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">Scanner QR Presensi</h3>
-                    <p className="text-[10px] text-gray-400">Pindai QR Siswa Otomatis</p>
+                    <h3 className="font-bold text-xs text-white">Scanner QR Presensi</h3>
+                    <p className="text-[9px] text-gray-400">Pindai QR Siswa</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={() => setIsQrModalOpen(false)} 
-                    className="px-2.5 py-1 rounded-lg bg-darkBg hover:bg-cardBorder border border-cardBorder text-[11px] text-gray-300 hover:text-white font-bold flex items-center gap-1 transition"
+                    className="px-2 py-0.5 rounded-lg bg-darkBg hover:bg-cardBorder border border-cardBorder text-[10px] text-gray-300 hover:text-white font-bold flex items-center gap-1 transition"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5 text-purple-400" /> Kembali
+                    <ArrowLeft className="w-3 h-3 text-purple-400" /> Kembali
                   </button>
                   <button 
                     onClick={() => setIsQrModalOpen(false)} 
                     className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-cardBorder transition"
                     title="Tutup Modal"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              {/* Modal Body: COMPACT CAMERA VIEWPORT */}
-              <div className="p-4 space-y-3">
-                <div className="relative h-48 sm:h-56 w-full bg-black rounded-xl border-2 border-primaryPurple/60 overflow-hidden flex items-center justify-center shadow-xl">
+              {/* Modal Body: MINI CAMERA VIEWPORT */}
+              <div className="p-3 space-y-2.5">
+                <div className="relative h-36 sm:h-40 w-full max-w-[260px] mx-auto bg-black rounded-lg border-2 border-primaryPurple/60 overflow-hidden flex items-center justify-center shadow-lg">
                   
                   {/* Animated Laser Line */}
                   <motion.div 
-                    animate={{ y: [-80, 80, -80] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                    className={`absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent shadow-[0_0_15px_#8B5CF6] z-10 ${isScanningAnim ? 'via-emerald-400 shadow-[0_0_20px_#10B981]' : ''}`}
+                    animate={{ y: [-55, 55, -55] }}
+                    transition={{ duration: 2.0, repeat: Infinity, ease: 'easeInOut' }}
+                    className={`absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent shadow-[0_0_12px_#8B5CF6] z-10 ${isScanningAnim ? 'via-emerald-400 shadow-[0_0_16px_#10B981]' : ''}`}
                   />
 
                   {/* Camera Corner Overlay Brackets */}
-                  <div className="absolute top-4 left-4 w-6 h-6 border-t-3 border-l-3 border-primaryPurple rounded-tl z-10"></div>
-                  <div className="absolute top-4 right-4 w-6 h-6 border-t-3 border-r-3 border-primaryPurple rounded-tr z-10"></div>
-                  <div className="absolute bottom-4 left-4 w-6 h-6 border-b-3 border-l-3 border-primaryPurple rounded-bl z-10"></div>
-                  <div className="absolute bottom-4 right-4 w-6 h-6 border-b-3 border-r-3 border-primaryPurple rounded-br z-10"></div>
+                  <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-primaryPurple rounded-tl z-10"></div>
+                  <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-primaryPurple rounded-tr z-10"></div>
+                  <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-primaryPurple rounded-bl z-10"></div>
+                  <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-primaryPurple rounded-br z-10"></div>
 
                   {/* Center Camera Status */}
-                  <div className="text-center p-4 z-10 space-y-2">
-                    <Scan className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto ${isScanningAnim ? 'text-emerald-400 animate-spin' : 'text-primaryPurple animate-pulse'}`} />
+                  <div className="text-center p-2 z-10 space-y-1.5">
+                    <Scan className={`w-8 h-8 mx-auto ${isScanningAnim ? 'text-emerald-400 animate-spin' : 'text-primaryPurple animate-pulse'}`} />
                     <div>
-                      <span className="text-xs text-white font-bold block">
-                        {isScanningAnim ? 'Memproses Hasil...' : 'Kamera Scanner Active'}
+                      <span className="text-[11px] text-white font-bold block leading-tight">
+                        {isScanningAnim ? 'Memproses...' : 'Kamera Active'}
                       </span>
-                      <p className="text-[10px] text-purple-300 mt-0.5">
-                        Arahkan Kode QR / Barcode Kartu Siswa ke Kamera
+                      <p className="text-[9px] text-purple-300 mt-0.5">
+                        Arahkan Kode QR Ke Kamera
                       </p>
                     </div>
                   </div>
@@ -533,19 +533,19 @@ export default function AbsensiHarianView({
                   <AnimatePresence>
                     {lastScanned && (
                       <motion.div 
-                        initial={{ y: 40, opacity: 0 }}
+                        initial={{ y: 30, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 40, opacity: 0 }}
-                        className="absolute bottom-3 inset-x-3 z-20 bg-emerald-600/90 backdrop-blur-md text-white p-2.5 rounded-lg shadow-xl flex items-center justify-between border border-emerald-400/40"
+                        exit={{ y: 30, opacity: 0 }}
+                        className="absolute bottom-2 inset-x-2 z-20 bg-emerald-600/90 backdrop-blur-md text-white p-2 rounded-md shadow-lg flex items-center justify-between border border-emerald-400/40"
                       >
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
                           <div>
-                            <h5 className="font-bold text-xs">{lastScanned.nama}</h5>
-                            <p className="text-[9px] text-emerald-100">NISN: {lastScanned.nisn} • HADIR</p>
+                            <h5 className="font-bold text-[10px] leading-tight">{lastScanned.nama}</h5>
+                            <p className="text-[8px] text-emerald-100">NISN: {lastScanned.nisn} • HADIR</p>
                           </div>
                         </div>
-                        <span className="text-[9px] font-mono bg-black/30 px-1.5 py-0.5 rounded">
+                        <span className="text-[8px] font-mono bg-black/30 px-1 py-0.5 rounded">
                           {lastScanned.time}
                         </span>
                       </motion.div>
@@ -554,13 +554,13 @@ export default function AbsensiHarianView({
                 </div>
 
                 {/* PANEL HASIL PINDAIAN TERAKHIR */}
-                <div className="bg-darkBg border border-cardBorder rounded-xl p-3 space-y-1.5">
+                <div className="bg-darkBg border border-cardBorder rounded-lg p-2.5 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-gray-300 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Hasil Pindaian Terakhir:
+                    <span className="text-[10px] font-bold text-gray-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Pindaian Terakhir:
                     </span>
                     {lastScanned && (
-                      <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono border border-emerald-500/30">
+                      <span className="text-[8px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono border border-emerald-500/30">
                         {lastScanned.time} WIB
                       </span>
                     )}
@@ -570,30 +570,29 @@ export default function AbsensiHarianView({
                     <motion.div 
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-lg flex items-center justify-between"
+                      className="bg-emerald-500/10 border border-emerald-500/30 p-1.5 rounded flex items-center justify-between"
                     >
                       <div>
-                        <h4 className="font-bold text-xs text-white">{lastScanned.nama}</h4>
-                        <p className="text-[10px] text-gray-300">NISN: {lastScanned.nisn} • Kelas: {lastScanned.kelas}</p>
-                        <p className="text-[9px] text-emerald-400 font-mono">Kode Barcode: {lastScanned.codeUsed}</p>
+                        <h4 className="font-bold text-[11px] text-white leading-tight">{lastScanned.nama}</h4>
+                        <p className="text-[9px] text-gray-300">NISN: {lastScanned.nisn} • Kelas: {lastScanned.kelas}</p>
                       </div>
-                      <span className="text-[10px] font-extrabold bg-emerald-500 text-white px-2.5 py-0.5 rounded shadow">
+                      <span className="text-[9px] font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded shadow">
                         HADIR
                       </span>
                     </motion.div>
                   ) : (
-                    <div className="text-center py-2 text-xs text-gray-400">
-                      <p className="font-semibold text-xs text-gray-300">Belum Ada Siswa Dipindai</p>
-                      <p className="text-[10px] text-gray-500">Tunjukkan QR Barcode siswa ke lensa kamera di atas.</p>
+                    <div className="text-center py-1.5 text-xs text-gray-400">
+                      <p className="font-semibold text-[11px] text-gray-300">Belum Ada Siswa Dipindai</p>
+                      <p className="text-[9px] text-gray-500">Tunjukkan QR siswa ke kamera di atas.</p>
                     </div>
                   )}
                 </div>
 
                 <button 
                   onClick={() => setIsQrModalOpen(false)}
-                  className="w-full bg-gradient-to-r from-primaryPurple to-accentBlue py-2.5 rounded-xl text-xs font-bold text-white shadow-md flex items-center justify-center gap-1.5 hover:opacity-90 transition"
+                  className="w-full bg-gradient-to-r from-primaryPurple to-accentBlue py-2 rounded-lg text-xs font-bold text-white shadow flex items-center justify-center gap-1 hover:opacity-90 transition"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Halaman Presensi
+                  <ArrowLeft className="w-3 h-3" /> Kembali ke Presensi
                 </button>
               </div>
             </motion.div>
