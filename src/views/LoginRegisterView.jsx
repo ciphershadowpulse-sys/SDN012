@@ -136,7 +136,7 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
               <Sparkles className="w-8 h-8" />
             </div>
             <div>
-              <h1 className="font-extrabold text-2xl tracking-wide text-white">Digital Guru</h1>
+              <h1 className="font-extrabold text-2xl tracking-wide text-white">Digital Guru SDN 012</h1>
               <p className="text-xs text-purple-300 font-medium">Portal Khusus Wali Kelas</p>
             </div>
           </div>
@@ -158,8 +158,8 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
             <button
               onClick={() => { setActiveMode('login'); setLoginError(''); }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${activeMode === 'login'
-                  ? 'bg-primaryPurple text-white shadow-lg shadow-purple-500/30'
-                  : 'text-gray-400 hover:text-white'
+                ? 'bg-primaryPurple text-white shadow-lg shadow-purple-500/30'
+                : 'text-gray-400 hover:text-white'
                 }`}
             >
               <LogIn className="w-4 h-4" /> Masuk Akun (Login)
@@ -168,8 +168,8 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
             <button
               onClick={() => { setActiveMode('register'); setRegError(''); setRegSuccess(''); }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${activeMode === 'register'
-                  ? 'bg-primaryPurple text-white shadow-lg shadow-purple-500/30'
-                  : 'text-gray-400 hover:text-white'
+                ? 'bg-primaryPurple text-white shadow-lg shadow-purple-500/30'
+                : 'text-gray-400 hover:text-white'
                 }`}
             >
               <UserPlus className="w-4 h-4" /> Daftar Akun Wali Kelas
