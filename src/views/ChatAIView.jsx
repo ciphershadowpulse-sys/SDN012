@@ -15,7 +15,7 @@ export default function ChatAIView({ currentUser, students = [], attendanceRecap
 
 Anda dapat menanyakan atau memerintahkan **APA SAJA**. Jawaban akan disajikan secara **akurat, tepat sasaran, dan langsung ke intinya**.
 
-Silakan ketik pertanyaan Anda di kolom chat di bawah!`,
+Silahkan Ketik pertanyaan tentang apa yang ada di atas.`,
     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   };
 
@@ -291,7 +291,7 @@ $$6CO_2 + 6H_2O \\xrightarrow{\\text{Cahaya Matahari & Klorofil}} C_6H_{12}O_6 +
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Tuliskan pertanyaan Anda... (misal: 'Buat RPP', 'Presiden pertama Indonesia', 'Draf WA ortu')"
+            placeholder="Silahkan Ketik pertanyaan tentang apa yang ada di atas..."
             className="flex-1 bg-cardBg border border-cardBorder rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primaryPurple"
           />
           <button 
