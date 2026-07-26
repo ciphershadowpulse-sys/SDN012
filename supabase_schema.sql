@@ -96,9 +96,16 @@ ALTER TABLE public.attendance_recap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
 
 -- POLICY PUBLIC ACCESS FOR DEMO
-CREATE POLICY "Public Profiles Access" ON public.profiles FOR ALL USING (true);
-CREATE POLICY "Public Students Access" ON public.students FOR ALL USING (true);
-CREATE POLICY "Public Attendances Access" ON public.daily_attendances FOR ALL USING (true);
-CREATE POLICY "Public Attendance Recap Access" ON public.attendance_recap FOR ALL USING (true);
-CREATE POLICY "Public Grades Access" ON public.grades FOR ALL USING (true);
+DROP POLICY IF EXISTS "Public Profiles Access" ON public.profiles;
+DROP POLICY IF EXISTS "Public Students Access" ON public.students;
+DROP POLICY IF EXISTS "Public Attendances Access" ON public.daily_attendances;
+DROP POLICY IF EXISTS "Public Attendance Recap Access" ON public.attendance_recap;
+DROP POLICY IF EXISTS "Public Grades Access" ON public.grades;
+
+CREATE POLICY "Public Profiles Access" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Students Access" ON public.students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Attendances Access" ON public.daily_attendances FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Attendance Recap Access" ON public.attendance_recap FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Grades Access" ON public.grades FOR ALL USING (true) WITH CHECK (true);
+
 

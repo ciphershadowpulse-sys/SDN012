@@ -87,25 +87,51 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
     const val = Math.min(100, Math.max(0, Number(value) || 0));
 
     setGrades(prevGrades => {
-      return prevGrades.map(g => {
-        if (g.studentId === studentId && g.mapel === selectedSubject) {
-          const updatedG = { ...g, [field]: val };
-          const { finalScore, predikat, status } = calculateGradeDetails(
-            field === 'tugas1' ? val : updatedG.tugas1,
-            field === 'tugas2' ? val : updatedG.tugas2,
-            field === 'uh' ? val : updatedG.uh,
-            field === 'uts' ? val : updatedG.uts,
-            field === 'uas' ? val : updatedG.uas
-          );
-          return {
-            ...updatedG,
-            nilaiAkhir: finalScore,
-            predikat,
-            status
-          };
-        }
-        return g;
-      });
+      const studentObj = students.find(s => s.id === studentId);
+      const exists = prevGrades.some(g => g.studentId === studentId && (g.mapel === selectedSubject || !g.mapel));
+
+      if (exists) {
+        return prevGrades.map(g => {
+          if (g.studentId === studentId && (g.mapel === selectedSubject || !g.mapel)) {
+            const updatedG = { ...g, [field]: val, mapel: selectedSubject };
+            const { finalScore, predikat, status } = calculateGradeDetails(
+              field === 'tugas1' ? val : updatedG.tugas1,
+              field === 'tugas2' ? val : updatedG.tugas2,
+              field === 'uh' ? val : updatedG.uh,
+              field === 'uts' ? val : updatedG.uts,
+              field === 'uas' ? val : updatedG.uas
+            );
+            return {
+              ...updatedG,
+              nilaiAkhir: finalScore,
+              predikat,
+              status
+            };
+          }
+          return g;
+        });
+      } else {
+        const base = {
+          studentId,
+          nama: studentObj?.nama || '',
+          kelas: studentObj?.kelas || '',
+          mapel: selectedSubject,
+          tugas1: 80,
+          tugas2: 80,
+          uh: 80,
+          uts: 80,
+          uas: 80,
+          [field]: val
+        };
+        const { finalScore, predikat, status } = calculateGradeDetails(
+          base.tugas1,
+          base.tugas2,
+          base.uh,
+          base.uts,
+          base.uas
+        );
+        return [...prevGrades, { ...base, nilaiAkhir: finalScore, predikat, status }];
+      }
     });
   };
 
@@ -124,12 +150,19 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
         promptText = `${studentNama} membutuhkan pendampingan remedial pada materi ${selectedSubject}. Perlu diberikan bimbingan ulang konsep dasar.`;
       }
 
-      setGrades(prev => prev.map(g => {
-        if (g.studentId === studentId && g.mapel === selectedSubject) {
-          return { ...g, catatanAi: promptText };
+      setGrades(prev => {
+        const exists = prev.some(g => g.studentId === studentId);
+        if (exists) {
+          return prev.map(g => {
+            if (g.studentId === studentId) {
+              return { ...g, catatanAi: promptText };
+            }
+            return g;
+          });
+        } else {
+          return [...prev, { ...currentGrade, studentId, catatanAi: promptText }];
         }
-        return g;
-      }));
+      });
 
       setLoadingAiId(null);
     }, 1000);

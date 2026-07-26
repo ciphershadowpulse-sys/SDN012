@@ -9,7 +9,8 @@ export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
   supabaseAnonKey && 
   supabaseUrl.includes('supabase.co') &&
-  !supabaseUrl.includes('url-supabase-anda')
+  !supabaseUrl.includes('url-supabase-anda') &&
+  !supabaseUrl.includes('xxxxxxxx')
 );
 
 // Inisialisasi Supabase Client (dengan fallback aman jika belum diisi)

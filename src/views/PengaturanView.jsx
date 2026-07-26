@@ -4,6 +4,7 @@ import {
   Settings, User, Building, Sparkles, Save, CheckCircle2, 
   ShieldCheck, BellRing, Database, Lock, Key, Globe
 } from 'lucide-react';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 export default function PengaturanView() {
   const [profile, setProfile] = useState({
@@ -17,8 +18,7 @@ export default function PengaturanView() {
     kkmDefault: 75,
     kurikulum: 'Kurikulum Merdeka',
     aiModel: 'Gemini 3.6 Pro (Fast & Accurate)',
-    autoWaAlert: true,
-    supabaseStatus: 'Terhubung (Cloud Synchronized)'
+    autoWaAlert: true
   });
 
   const [toastMsg, setToastMsg] = useState(null);
@@ -197,8 +197,9 @@ export default function PengaturanView() {
 
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1.5">Status Sinkronisasi Database</label>
-              <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs text-emerald-400 font-semibold">
-                <Database className="w-4 h-4 text-emerald-400" /> {profile.supabaseStatus}
+              <div className={`flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs font-semibold ${isSupabaseConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <Database className={`w-4 h-4 ${isSupabaseConfigured ? 'text-emerald-400' : 'text-amber-400'}`} /> 
+                {isSupabaseConfigured ? 'Terhubung (Cloud Synchronized)' : 'Mode Standalone (Lokal - Tanpa Cloud DB)'}
               </div>
             </div>
           </div>

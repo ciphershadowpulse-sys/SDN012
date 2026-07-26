@@ -102,6 +102,18 @@ export default function AbsensiHarianView({
         const total = item.hadir + item.sakit + item.izin + item.alpa;
         item.persentase = total > 0 ? Math.round((item.hadir / total) * 1000) / 10 : 100;
         newRecap[recapIndex] = item;
+      } else {
+        const item = {
+          studentId: s.id,
+          nama: s.nama,
+          kelas: s.kelas,
+          hadir: rec.status === 'Hadir' ? 1 : 0,
+          sakit: rec.status === 'Sakit' ? 1 : 0,
+          izin: rec.status === 'Izin' ? 1 : 0,
+          alpa: rec.status === 'Alpa' ? 1 : 0,
+          persentase: rec.status === 'Hadir' ? 100 : 0
+        };
+        newRecap.push(item);
       }
     });
 
