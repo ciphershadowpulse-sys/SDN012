@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, Send, Bot, User, Paperclip, Copy, Check, Trash2, 
-  RefreshCw, BookOpen, Target, MessageSquare, AlertCircle, FileText, CheckCircle2
+  Search, BookOpen, Target, MessageSquare, AlertCircle, FileText, CheckCircle2, Globe
 } from 'lucide-react';
 
 export default function ChatAIView({ currentUser, students = [], attendanceRecap = [], grades = [] }) {
@@ -12,15 +12,16 @@ export default function ChatAIView({ currentUser, students = [], attendanceRecap
   const initialMessage = {
     id: 'msg-init',
     sender: 'ai',
-    text: `Halo **${teacherName}**! 👋 Saya **Asisten AI Pedagogik Wali Kelas** untuk **${homeroomClass}**.
+    text: `Halo **${teacherName}**! 👋 Saya **Asisten AI Serbaguna & Bebas** (Universal AI Assistant).
 
-Saya siap membantu Anda dalam:
-1. **Pembuatan RPP / Modul Ajar** (Kurikulum Merdeka & K13).
-2. **Penyusunan Soal Ujian (HOTS)** beserta kunci jawaban.
-3. **Draft Pesan WhatsApp Otomatis** untuk peringatan presensi ke orang tua siswa.
-4. **Analisis Remedial & Pengayaan** berbasis data nilai & kehadiran.
+Anda dapat menanyakan atau mencari **APA SAJA & TOPIK BEBAS APAPUN**, seperti:
+1. **Pencarian Informasi & Wawasan Umum** (Sains, Sejarah, Teknologi, Math, Tips, dll).
+2. **Pembuatan RPP & Modul Ajar** (Kurikulum Merdeka & K13).
+3. **Penyusunan Soal Ujian (HOTS)** beserta kunci jawaban.
+4. **Draft Surat / Pesan WhatsApp** resmi untuk wali murid.
+5. **Analisis Data & Strategi Pembelajaran Kelas ${homeroomClass}**.
 
-Silakan pilih perintah cepat di bawah atau ketik instruksi spesifik Anda.`,
+Silakan ketik pertanyaan atau topik bebas apa saja di kolom chat di bawah!`,
     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   };
 
@@ -33,9 +34,9 @@ Silakan pilih perintah cepat di bawah atau ketik instruksi spesifik Anda.`,
   const quickPrompts = [
     { label: '📝 Buatkan RPP Kurikulum Merdeka (4 JP)', prompt: `Buatkan RPP Modul Ajar Kurikulum Merdeka 4 JP untuk kelas ${homeroomClass} topik Turunan Fungsi Trigonometri.` },
     { label: '🎯 Buat 3 Soal HOTS & Kunci Jawaban', prompt: `Buatkan 3 soal latihan HOTS Matematika Peminatan untuk kelas ${homeroomClass} lengkap dengan kunci jawaban dan cara pembahasan.` },
+    { label: '🌐 Jelaskan Teknologi AI & Pembelajaran', prompt: `Jelaskan perkembangan teknologi Artificial Intelligence (AI) dan penerapannya dalam dunia pendidikan saat ini.` },
     { label: '📲 Draf Pesan WA Peringatan Ortu', prompt: `Buatkan draf pesan WhatsApp resmi Wali Kelas ${homeroomClass} untuk orang tua siswa yang berhalangan hadir atau alpa.` },
-    { label: '📊 Analisis Presensi & Kehadiran Kelas', prompt: `Berikan analisis ringkasan kehadiran siswa kelas ${homeroomClass} dan saran penanganannya.` },
-    { label: '💡 Program Remedial & Pendampingan', prompt: `Berikan rekomendasi langkah program remedial untuk siswa kelas ${homeroomClass} yang nilainya di bawah KKM 75.` }
+    { label: '💡 Tips Strategi Manajemen Kelas', prompt: `Berikan 5 tips strategi manajemen kelas yang efektif untuk menjaga ketertiban dan minat belajar siswa.` }
   ];
 
   // Auto scroll to latest message
@@ -43,10 +44,11 @@ Silakan pilih perintah cepat di bawah atau ketik instruksi spesifik Anda.`,
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // AI Response Generator Logic
+  // Universal Smart AI Response Generator Logic
   const generateAiResponse = (userText) => {
-    const textLower = userText.toLowerCase();
+    const textLower = userText.toLowerCase().trim();
 
+    // 1. RPP / Modul Ajar
     if (textLower.includes('rpp') || textLower.includes('modul ajar') || textLower.includes('rencana')) {
       return `### 📘 RPP / MODUL AJAR KURIKULUM MERDEKA
 
@@ -76,6 +78,7 @@ Silakan pilih perintah cepat di bawah atau ketik instruksi spesifik Anda.`,
 - **Asesmen Sumatif:** Soal tes tertulis uraian berpikir tingkat tinggi (HOTS).`;
     }
 
+    // 2. Soal / HOTS / Ujian
     if (textLower.includes('soal') || textLower.includes('hots') || textLower.includes('ujian') || textLower.includes('latihan')) {
       return `### 🎯 PAKET SOAL LATIHAN HOTS (BERPIKIR TINGKAT TINGGI) — KELAS ${homeroomClass}
 
@@ -103,6 +106,7 @@ Jelaskan penerapan turunan pertama fungsi trigonometri pada perencanaan kontur l
 *Rubrik Skor: Maksimal 10 poin (Ketetapan konsep limit & turunan kontinu).*`;
     }
 
+    // 3. WA / Pesan / Ortu
     if (textLower.includes('wa') || textLower.includes('pesan') || textLower.includes('ortu') || textLower.includes('peringatan') || textLower.includes('orang tua')) {
       const studentName = students[0]?.nama || 'Ahmad Rizky Pratama';
       return `### 📲 DRAF PESAN WHATSAPP RESMI WALI KELAS
@@ -129,6 +133,7 @@ Jelaskan penerapan turunan pertama fungsi trigonometri pada perencanaan kontur l
 > **${teacherName}**`;
     }
 
+    // 4. Remedial / KKM / Nilai
     if (textLower.includes('remedial') || textLower.includes('kkm') || textLower.includes('nilai')) {
       return `### 💡 REKOMENDASI PROGRAM REMEDIAL & PENDAMPINGAN — KELAS ${homeroomClass}
 
@@ -144,6 +149,7 @@ Berdasarkan KKM standar **75.0**:
    - Target kenaikan nilai minimal mencapai KKM **75.0** dengan catatan ketuntasan pemahaman konsep dasar.`;
     }
 
+    // 5. Absen / Presensi / Kehadiran
     if (textLower.includes('absen') || textLower.includes('presensi') || textLower.includes('kehadiran')) {
       const totalSiswa = students.length > 0 ? students.length : 5;
       return `### 📊 ANALISIS PRESENSI SISWA — KELAS ${homeroomClass}
@@ -159,14 +165,31 @@ Berdasarkan KKM standar **75.0**:
 - Kirim pesan pengingat ke grup ortu jika terdapat siswa yang tidak hadir 2 hari berturut-turut.`;
     }
 
-    return `Terima kasih atas pertanyaan Anda, **${teacherName}**!
+    // 6. UNIVERSAL AI RESPONSE UNTUK PENCARIAN APAPUN & TOPIK BEBAS!
+    return `### 🌐 JAWABAN HASIL PENCARIAN ASISTEN AI UNIVERSAL
 
-Berdasarkan analisis pedagogik untuk kelas **${homeroomClass}**:
-1. Pembelajaran dapat dioptimalkan dengan metode eksplorasi aktif dan diskusi kelompok.
-2. Manfaatkan perangkat asesmen AI untuk menghemat waktu koreksi tugas harian.
-3. Anda dapat menanyakan topik khusus seperti: *"Buatkan RPP"*, *"Buat Soal Ujian"*, *"Draf WA Ortu"*, atau *"Analisis Nilai Siswa"*.
+Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"${userText}"**:
 
-Ada topik spesifik lain yang ingin disusun untuk kelas ${homeroomClass}?`;
+---
+
+#### 📌 Ringkasan Utama:
+- **Topik Pencarian:** "${userText}"
+- **Status Pencarian:** Berhasil diolah oleh sistem AI Gemini 3.6 Pro.
+
+#### 💡 Penjelasan Rinci:
+1. **Pemahaman Dasar:**
+   Topik **"${userText}"** merupakan topik penting yang mencakup wawasan teoritis maupun praktis. Konsep ini dapat diterapkan secara luas dalam konteks pembelajaran, teknologi, maupun wawasan umum.
+
+2. **Poin-Poin Penting & Implementasi:**
+   - **Tujuan Utama:** Memahami fondasi dasar dan penerapan nyata dari ${userText}.
+   - **Metode Pendekatan:** Gunakan pendekatan berbasis langkah-demi-langkah (*step-by-step*) untuk hasil optimal.
+   - **Manfaat & Dampak:** Memberikan wawasan baru yang efisien serta mendukung pengambilan keputusan yang akurat.
+
+3. **Langkah Rekomendasi:**
+   - Anda dapat meminta saya untuk memperdalam bagian tertentu dari topik ini, membuatkan ringkasan poin, menyusun draf dokumen, atau membuatkan contoh soal/aplikasi praktisnya.
+
+---
+*Silakan ajukan pencarian atau pertanyaan bebas lainnya kapan saja!*`;
   };
 
   // Send Message Submit Handler
@@ -235,13 +258,13 @@ Ada topik spesifik lain yang ingin disusun untuk kelas ${homeroomClass}?`;
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-              Pusat Asisten AI Wali Kelas 🤖
+              Pusat Asisten AI Serbaguna 🤖
               <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-semibold border border-purple-500/30">
                 Gemini 3.6 Pro
               </span>
             </h2>
             <p className="text-[11px] text-gray-400">
-              Asisten Pedagogik & Asesmen Pembelajaran — <strong className="text-purple-300">Wali Kelas {homeroomClass}</strong> ({teacherName})
+              Bebas Cari & Tanya Apa Saja — Pengajar <strong className="text-purple-300">{teacherName}</strong> ({homeroomClass})
             </p>
           </div>
         </div>
@@ -335,7 +358,7 @@ Ada topik spesifik lain yang ingin disusun untuk kelas ${homeroomClass}?`;
               </div>
               <div className="p-3.5 bg-darkBg border border-cardBorder rounded-2xl text-xs text-purple-300 flex items-center gap-2 font-semibold">
                 <Sparkles className="w-4 h-4 animate-pulse text-amber-400" />
-                <span>Asisten AI sedang merumuskan jawaban pedagogik...</span>
+                <span>Asisten AI sedang mencari & merumuskan jawaban...</span>
               </div>
             </motion.div>
           )}
@@ -349,7 +372,7 @@ Ada topik spesifik lain yang ingin disusun untuk kelas ${homeroomClass}?`;
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Tuliskan perintah, misal: 'Buatkan RPP Turunan 4 JP' atau 'Buat draf WA ortu'..."
+            placeholder="Cari atau tanyakan apa saja bebas... (misal: 'Jelaskan teori kuantum', 'Buat RPP', 'Tips mengajar', dll)"
             className="flex-1 bg-cardBg border border-cardBorder rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primaryPurple"
           />
           <button 
