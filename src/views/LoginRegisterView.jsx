@@ -22,7 +22,7 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
     username: '',
     password: '',
     confirmPassword: '',
-    kelasBinaan: INITIAL_CLASSES[0] || 'XII MIPA 1',
+    kelasBinaan: '',
     email: '',
     phone: ''
   });
@@ -276,14 +276,15 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Pilihan Kelas Binaan *</label>
-                    <select
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Walikelas *</label>
+                    <input
+                      type="text"
+                      required
                       value={regData.kelasBinaan}
                       onChange={(e) => setRegData({ ...regData, kelasBinaan: e.target.value })}
-                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primaryPurple font-semibold"
-                    >
-                      {INITIAL_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                      placeholder="Contoh: XII MIPA 1 / Kelas 5A"
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primaryPurple font-semibold"
+                    />
                   </div>
                 </div>
 
