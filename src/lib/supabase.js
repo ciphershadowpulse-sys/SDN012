@@ -35,11 +35,42 @@ export async function fetchUserAccountsSupabase(defaultAccounts) {
       kelasBinaan: p.kelas_binaan || p.kelasBinaan,
       role: p.role || 'Wali Kelas',
       email: p.email,
-      phone: p.phone
     }));
   } catch (err) {
     console.warn('Gagal memuat profil dari Supabase, menggunakan lokal state:', err);
     return defaultAccounts;
+  }
+}
+
+export async function loginUserSupabase(username, password) {
+  if (!isSupabaseConfigured || !supabase) return null;
+  try {
+    const cleanUsername = (username || '').trim();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', cleanUsername)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    if (data.password === password) {
+      return {
+        id: data.id,
+        username: data.username,
+        password: data.password,
+        nama: data.nama,
+        nip: data.nip || '-',
+        kelasBinaan: data.kelas_binaan || data.kelasBinaan || 'XII MIPA 1',
+        role: data.role || 'Wali Kelas',
+        email: data.email || '',
+        phone: data.phone || ''
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error('Error verifikasi login Supabase:', err);
+    return null;
   }
 }
 

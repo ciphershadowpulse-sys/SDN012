@@ -4,11 +4,11 @@ import {
   Sparkles, Lock, User, UserPlus, LogIn, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { INITIAL_CLASSES } from '../data/initialData';
-import { saveUserAccountSupabase } from '../lib/supabase';
-
+import { isSupabaseConfigured, saveUserAccountSupabase, loginUserSupabase } from '../lib/supabase';
 
 export default function LoginRegisterView({ userAccounts, setUserAccounts, onLoginSuccess }) {
   const [activeMode, setActiveMode] = useState('login'); // 'login' | 'register'
+  const [isLoading, setIsLoading] = useState(false);
 
   // Login Form State
   const [loginUsername, setLoginUsername] = useState('');
@@ -30,23 +30,48 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
   const [regSuccess, setRegSuccess] = useState('');
 
   // Handle Login Submit
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
 
-    const account = userAccounts.find(
-      u => u.username.toLowerCase() === loginUsername.trim().toLowerCase() && u.password === loginPassword
-    );
+    if (!loginUsername.trim() || !loginPassword) {
+      setLoginError('Mohon isi Username dan Password!');
+      return;
+    }
 
-    if (account) {
-      onLoginSuccess(account);
-    } else {
-      setLoginError('Username atau Password yang Anda masukkan tidak cocok!');
+    setIsLoading(true);
+
+    try {
+      // 1. Cek langsung ke database Supabase jika kredensial Supabase terkonfigurasi
+      if (isSupabaseConfigured) {
+        const dbAccount = await loginUserSupabase(loginUsername, loginPassword);
+        if (dbAccount) {
+          setIsLoading(false);
+          onLoginSuccess(dbAccount);
+          return;
+        }
+      }
+
+      // 2. Cek ke daftar userAccounts terdaftar jika Supabase tidak terhubung atau mode offline
+      const account = userAccounts.find(
+        u => u.username.toLowerCase() === loginUsername.trim().toLowerCase() && u.password === loginPassword
+      );
+
+      if (account) {
+        setIsLoading(false);
+        onLoginSuccess(account);
+      } else {
+        setIsLoading(false);
+        setLoginError('Akun belum terdaftar atau kombinasi Username & Password salah! Silakan lakukan pendaftaran terlebih dahulu.');
+      }
+    } catch (err) {
+      setIsLoading(false);
+      setLoginError('Gagal memeriksa database akun: ' + err.message);
     }
   };
 
   // Handle Register Submit
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setRegError('');
     setRegSuccess('');
@@ -63,7 +88,7 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
 
     // Check if username already exists
     if (userAccounts.some(u => u.username.toLowerCase() === regData.username.trim().toLowerCase())) {
-      setRegError(`Username "${regData.username}" sudah digunakan oleh Wali Kelas lain!`);
+      setRegError(`Username "${regData.username}" sudah terdaftar di sistem!`);
       return;
     }
 
@@ -79,9 +104,13 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
       phone: regData.phone.trim() || ''
     };
 
-    saveUserAccountSupabase(newUser);
-    setUserAccounts([...userAccounts, newUser]);
-    setRegSuccess(`Akun Wali Kelas "${newUser.nama}" untuk ${newUser.kelasBinaan} Berhasil Didaftarkan! Silakan Login.`);
+    setIsLoading(true);
+
+    await saveUserAccountSupabase(newUser);
+    setUserAccounts(prev => [...prev, newUser]);
+    setIsLoading(false);
+
+    setRegSuccess(`Akun Wali Kelas "${newUser.nama}" untuk ${newUser.kelasBinaan} Berhasil Didaftarkan ke Database! Silakan Login.`);
 
     // Switch to login tab and prefill username
     setLoginUsername(newUser.username);

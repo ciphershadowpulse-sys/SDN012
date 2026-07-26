@@ -25,9 +25,16 @@ import {
 import { Bell, Mail, Sparkles, LogOut, UserCheck, ShieldCheck, Menu } from 'lucide-react';
 
 export default function App() {
-  // Authentication State
+  // Authentication State (Requires login/registration if no saved session)
   const [userAccounts, setUserAccounts] = useState(INITIAL_USER_ACCOUNTS);
-  const [currentUser, setCurrentUser] = useState(INITIAL_USER_ACCOUNTS[0]); // Default: Pak Budi (Wali Kelas XII MIPA 1)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('digital_guru_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -52,6 +59,12 @@ export default function App() {
   const [dailyAttendanceRecords, setDailyAttendanceRecords] = useState({});
   const [scannedSessionList, setScannedSessionList] = useState([]);
 
+  // Logout Handler
+  const handleLogout = () => {
+    localStorage.removeItem('digital_guru_session');
+    setCurrentUser(null);
+  };
+
   // If not authenticated, render Login & Register Page
   if (!currentUser) {
     return (
@@ -59,6 +72,7 @@ export default function App() {
         userAccounts={userAccounts}
         setUserAccounts={setUserAccounts}
         onLoginSuccess={(user) => {
+          localStorage.setItem('digital_guru_session', JSON.stringify(user));
           setCurrentUser(user);
           setActiveTab('dashboard');
         }}
@@ -72,10 +86,6 @@ export default function App() {
   
   // Filter master students strictly for the logged-in Wali Kelas
   const homeroomStudents = students.filter(s => s.kelas === homeroomClass);
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-  };
 
   return (
     <div className="flex h-screen bg-darkBg text-gray-100 font-sans overflow-hidden">
