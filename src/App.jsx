@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import DashboardView from './views/DashboardView';
@@ -15,6 +15,13 @@ import LoginRegisterView from './views/LoginRegisterView';
 
 import { INITIAL_STUDENTS, INITIAL_CLASSES, INITIAL_ATTENDANCE_RECAP, INITIAL_GRADES } from './data/initialData';
 import { INITIAL_USER_ACCOUNTS } from './data/userAccounts';
+import { 
+  isSupabaseConfigured,
+  fetchUserAccountsSupabase,
+  fetchStudentsSupabase,
+  fetchAttendanceRecapSupabase,
+  fetchGradesSupabase
+} from './lib/supabase';
 import { Bell, Mail, Sparkles, LogOut, UserCheck, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -28,6 +35,16 @@ export default function App() {
   const [students, setStudents] = useState(INITIAL_STUDENTS);
   const [attendanceRecap, setAttendanceRecap] = useState(INITIAL_ATTENDANCE_RECAP);
   const [grades, setGrades] = useState(INITIAL_GRADES);
+
+  // Load from Supabase on mount if configured
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchUserAccountsSupabase(INITIAL_USER_ACCOUNTS).then(accs => setUserAccounts(accs));
+      fetchStudentsSupabase(INITIAL_STUDENTS).then(stus => setStudents(stus));
+      fetchAttendanceRecapSupabase(INITIAL_ATTENDANCE_RECAP).then(recap => setAttendanceRecap(recap));
+      fetchGradesSupabase(INITIAL_GRADES).then(grds => setGrades(grds));
+    }
+  }, []);
 
   // Persistent States for Daily Attendance & Scanned Students across tab switches
   const [scannedStudentIds, setScannedStudentIds] = useState([]);

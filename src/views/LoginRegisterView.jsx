@@ -4,6 +4,8 @@ import {
   Sparkles, Lock, User, UserPlus, LogIn, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { INITIAL_CLASSES } from '../data/initialData';
+import { saveUserAccountSupabase } from '../lib/supabase';
+
 
 export default function LoginRegisterView({ userAccounts, setUserAccounts, onLoginSuccess }) {
   const [activeMode, setActiveMode] = useState('login'); // 'login' | 'register'
@@ -77,6 +79,7 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
       phone: regData.phone.trim() || ''
     };
 
+    saveUserAccountSupabase(newUser);
     setUserAccounts([...userAccounts, newUser]);
     setRegSuccess(`Akun Wali Kelas "${newUser.nama}" untuk ${newUser.kelasBinaan} Berhasil Didaftarkan! Silakan Login.`);
 

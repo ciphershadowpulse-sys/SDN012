@@ -7,6 +7,9 @@ import {
   Users, Eye, EyeOff, ArrowLeft
 } from 'lucide-react';
 import { USER_QR_SAMPLES } from '../data/initialData';
+import { saveDailyAttendanceSupabase, saveAttendanceRecapSupabase } from '../lib/supabase';
+
+
 
 export default function AbsensiHarianView({ 
   students, 
@@ -82,7 +85,7 @@ export default function AbsensiHarianView({
   };
 
   // Action: Save Attendance
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = async () => {
     const newRecap = [...attendanceRecap];
     classStudents.forEach(s => {
       const rec = attendanceRecords[s.id];
@@ -103,6 +106,8 @@ export default function AbsensiHarianView({
     });
 
     setAttendanceRecap(newRecap);
+    saveDailyAttendanceSupabase(attendanceRecords, selectedClass, selectedDate);
+    saveAttendanceRecapSupabase(newRecap);
     triggerToast(`Presensi Kelas ${selectedClass} Tanggal ${selectedDate} Berhasil Disimpan!`);
   };
 
@@ -196,6 +201,7 @@ export default function AbsensiHarianView({
   const izinCount = classStudents.filter(s => attendanceRecords[s.id]?.status === 'Izin' && scannedStudentIds.includes(s.id)).length;
   const alpaCount = classStudents.filter(s => attendanceRecords[s.id]?.status === 'Alpa' && scannedStudentIds.includes(s.id)).length;
   const hadirPercentage = totalCount > 0 ? Math.round((scannedCount / totalCount) * 100) : 0;
+
 
   return (
     <motion.div 
