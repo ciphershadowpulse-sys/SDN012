@@ -269,9 +269,13 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
                       type="text"
                       required
                       value={regData.nama}
-                      onChange={(e) => setRegData({ ...regData, nama: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const capitalized = val.replace(/\b\w/g, char => char.toUpperCase());
+                        setRegData({ ...regData, nama: capitalized });
+                      }}
                       placeholder="Pak Rahmat, S.Pd"
-                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primaryPurple"
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-primaryPurple capitalize"
                     />
                   </div>
 

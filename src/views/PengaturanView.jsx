@@ -84,8 +84,12 @@ export default function PengaturanView() {
               <input 
                 type="text"
                 value={profile.nama}
-                onChange={(e) => setProfile({ ...profile, nama: e.target.value })}
-                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const capitalized = val.replace(/\b\w/g, char => char.toUpperCase());
+                  setProfile({ ...profile, nama: capitalized });
+                }}
+                className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple capitalize"
               />
             </div>
 
