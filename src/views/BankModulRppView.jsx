@@ -148,7 +148,7 @@ export default function BankModulRppView({ classes }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-8 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
@@ -157,20 +157,20 @@ export default function BankModulRppView({ classes }) {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-purple-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-purple-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-purple-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-purple-400/40"
           >
-            <Sparkles className="w-5 h-5" /> {toastMessage}
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER & AI BANNER */}
-      <div className="bg-gradient-to-r from-purple-900/40 via-cardBg to-blue-900/40 border border-purple-500/30 p-8 rounded-2xl shadow-xl flex items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-purple-900/40 via-cardBg to-blue-900/40 border border-purple-500/30 p-4 sm:p-6 lg:p-8 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 sm:gap-6">
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" /> Modul & RPP Pintar AI
           </div>
-          <h2 className="text-2xl font-bold text-white">Bank Modul Ajar & RPP Pembelajaran</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Bank Modul Ajar & RPP Pembelajaran</h2>
           <p className="text-xs text-gray-300 leading-relaxed">
             Kelola, unduh, dan buat draf Rencana Pelaksanaan Pembelajaran (RPP) Kurikulum Merdeka secara otomatis menggunakan teknologi AI untuk hemat waktu mengajar Anda.
           </p>
@@ -178,14 +178,14 @@ export default function BankModulRppView({ classes }) {
 
         <button 
           onClick={() => setIsAiModalOpen(true)}
-          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-3.5 rounded-xl text-sm font-bold text-white shadow-xl shadow-purple-500/30 flex items-center gap-2.5 hover:opacity-90 transition shrink-0"
+          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xl shadow-purple-500/30 flex items-center gap-2 hover:opacity-90 transition shrink-0"
         >
-          <Sparkles className="w-5 h-5" /> Generate RPP Otomatis AI
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Generate RPP Otomatis AI
         </button>
       </div>
 
       {/* FILTER & SEARCH TOOLBAR */}
-      <div className="bg-cardBg border border-cardBorder p-5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-cardBg border border-cardBorder p-4 sm:p-5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-[280px]">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -193,13 +193,12 @@ export default function BankModulRppView({ classes }) {
               type="text" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari judul modul, bab, atau materi RPP..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-darkBg border border-cardBorder rounded-xl text-sm text-white focus:outline-none focus:border-primaryPurple"
+              placeholder="Cari judul modul atau RPP..."
+              className="w-full bg-darkBg border border-cardBorder rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-primaryPurple"
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400 shrink-0" />
             <select 
               value={selectedKurikulum}
               onChange={(e) => setSelectedKurikulum(e.target.value)}
@@ -227,7 +226,7 @@ export default function BankModulRppView({ classes }) {
       </div>
 
       {/* GRID LIST RPP & MODUL */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {filteredDocs.length > 0 ? (
           filteredDocs.map((doc) => (
             <div 

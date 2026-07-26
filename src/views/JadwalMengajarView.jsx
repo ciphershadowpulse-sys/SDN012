@@ -65,7 +65,7 @@ export default function JadwalMengajarView({ classes }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-8 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* TOAST */}
       <AnimatePresence>
@@ -74,35 +74,35 @@ export default function JadwalMengajarView({ classes }) {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCircle2 className="w-5 h-5" /> {toastMsg}
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER & ACTIONS */}
-      <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-purple-500/10 border border-purple-500/20 text-primaryPurple rounded-xl">
-            <Calendar className="w-6 h-6" />
+      <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-purple-500/10 border border-purple-500/20 text-primaryPurple rounded-xl shrink-0">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-white">Jadwal Agenda Mengajar Mingguan</h3>
+            <h3 className="font-bold text-sm sm:text-lg text-white">Jadwal Agenda Mengajar Mingguan</h3>
             <p className="text-xs text-gray-400">Kelola alokasi waktu dan ruangan kelas mengajar Pak Budi, S.Pd</p>
           </div>
         </div>
 
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
+          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
         >
           <Plus className="w-4 h-4" /> Tambah Agenda Jadwal
         </button>
       </div>
 
       {/* METRICS SUMMARY */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl">
           <span className="text-xs text-gray-400 font-medium">Total Beban Mengajar</span>
           <h3 className="text-3xl font-bold mt-1 text-white">24 Jam Pelajaran</h3>

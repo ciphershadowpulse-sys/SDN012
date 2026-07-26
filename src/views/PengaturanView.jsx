@@ -34,7 +34,7 @@ export default function PengaturanView() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-8 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
@@ -43,42 +43,42 @@ export default function PengaturanView() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCircle2 className="w-5 h-5" /> {toastMsg}
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER */}
-      <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-purple-500/10 border border-purple-500/20 text-primaryPurple rounded-xl">
-            <Settings className="w-6 h-6" />
+      <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-purple-500/10 border border-purple-500/20 text-primaryPurple rounded-xl shrink-0">
+            <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-white">Pengaturan Akun Guru & Konfigurasi Sekolah</h3>
+            <h3 className="font-bold text-sm sm:text-lg text-white">Pengaturan Akun Guru & Konfigurasi Sekolah</h3>
             <p className="text-xs text-gray-400">Atur profil, identitas kurikulum, dan integrasi kecerdasan buatan AI</p>
           </div>
         </div>
 
         <button 
           onClick={handleSave}
-          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
+          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
         >
           <Save className="w-4 h-4" /> Simpan Pengaturan
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8">
+      <form onSubmit={handleSave} className="space-y-6">
         {/* SEKSI 1: PROFIL GURU */}
-        <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl space-y-6">
+        <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl space-y-6">
           <div className="flex items-center gap-3 border-b border-cardBorder pb-4">
             <User className="w-5 h-5 text-primaryPurple" />
             <h4 className="font-bold text-base text-white">Profil Pengajar / Guru</h4>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1.5">Nama Lengkap & Gelar</label>
               <input 

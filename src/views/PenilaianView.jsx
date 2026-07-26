@@ -180,7 +180,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-8 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* SAVE TOAST */}
       <AnimatePresence>
@@ -189,15 +189,15 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCircle2 className="w-5 h-5" /> Data Penilaian {selectedSubject} Berhasil Disimpan ke Sistem!
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> Data Penilaian {selectedSubject} Berhasil Disimpan ke Sistem!
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER CONTROLS */}
-      <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-6">
+      <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 sm:gap-6">
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Mata Pelajaran</label>

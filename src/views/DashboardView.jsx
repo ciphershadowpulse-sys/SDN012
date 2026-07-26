@@ -47,30 +47,30 @@ export default function DashboardView({ currentUser, students = [] }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-8 overflow-y-auto flex-1"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100"
     >
       {/* STATS CARDS WALI KELAS */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
           { title: `Total Siswa (${kelasName})`, value: `${totalSiswaKelas} Siswa`, change: `Wali Kelas ${kelasName}`, icon: Users, color: 'text-purple-400' },
           { title: 'Tugas Dinilai AI', value: '1,245', change: '+14.5% minggu ini', icon: CheckCircle2, color: 'text-blue-400' },
           { title: 'Jam Efektif Mengajar', value: '156 Jam', change: '+22.6% efisiensi', icon: Clock, color: 'text-emerald-400' },
           { title: 'Akurasi Penilaian', value: '98.6%', change: '+5.3% dari standar', icon: Award, color: 'text-amber-400' },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl hover:border-primaryPurple/50 transition">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-gray-400 font-medium">{stat.title}</span>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+          <div key={idx} className="bg-cardBg border border-cardBorder p-4 sm:p-5 rounded-2xl shadow-xl hover:border-primaryPurple/50 transition">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs sm:text-sm text-gray-400 font-medium">{stat.title}</span>
+              <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
             </div>
-            <h3 className="text-3xl font-bold mb-1 text-white">{stat.value}</h3>
+            <h3 className="text-2xl sm:text-3xl font-bold mb-1 text-white">{stat.value}</h3>
             <p className="text-xs text-emerald-400 font-medium">{stat.change}</p>
           </div>
         ))}
       </div>
 
       {/* CHARTS & AI INTERACTIVE SECTION */}
-      <div className="grid grid-cols-3 gap-8">
-        <div className="col-span-2 bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="lg:col-span-2 bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-lg text-white">Statistik Keaktifan & Tugas Siswa — {kelasName}</h3>
             <span className="text-xs bg-darkBg px-3 py-1 rounded-lg text-gray-400 border border-cardBorder">Minggu Ini</span>

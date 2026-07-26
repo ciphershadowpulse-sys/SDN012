@@ -210,7 +210,7 @@ export default function DataSiswaView({ students, setStudents, classes }) {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
@@ -219,15 +219,15 @@ export default function DataSiswaView({ students, setStudents, classes }) {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCircle2 className="w-5 h-5" /> {toastMsg}
+            <Check className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* STATS CARDS */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 font-medium">Total Siswa Terdaftar</p>

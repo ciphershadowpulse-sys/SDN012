@@ -22,7 +22,7 @@ import {
   fetchAttendanceRecapSupabase,
   fetchGradesSupabase
 } from './lib/supabase';
-import { Bell, Mail, Sparkles, LogOut, UserCheck, ShieldCheck } from 'lucide-react';
+import { Bell, Mail, Sparkles, LogOut, UserCheck, ShieldCheck, Menu } from 'lucide-react';
 
 export default function App() {
   // Authentication State
@@ -30,6 +30,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(INITIAL_USER_ACCOUNTS[0]); // Default: Pak Budi (Wali Kelas XII MIPA 1)
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Shared Master States
   const [students, setStudents] = useState(INITIAL_STUDENTS);
@@ -84,40 +85,54 @@ export default function App() {
         setActiveTab={setActiveTab} 
         currentUser={currentUser}
         onLogout={handleLogout}
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
       />
 
       {/* Area Konten Utama */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar Header */}
-        <header className="h-20 border-b border-cardBorder px-8 flex items-center justify-between bg-darkBg/50 backdrop-blur-md shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              {activeTab === 'dashboard' && `Selamat Datang, ${currentUser.nama}! 👋`}
-              {activeTab === 'data_siswa' && `Data Siswa Wali Kelas — ${homeroomClass} 👥`}
-              {activeTab === 'absensi_harian' && `Absensi Harian Wali Kelas — ${homeroomClass} 📝`}
-              {activeTab === 'absensi_siswa' && `Rekap Absensi Siswa — ${homeroomClass} 📊`}
-              {activeTab === 'penilaian' && `Penilaian Siswa Wali Kelas — ${homeroomClass} 🎓`}
-              {activeTab === 'chat' && 'Pusat Asisten AI Wali Kelas 🤖'}
-              {activeTab === 'analytics' && `Analisis Pembelajaran Wali Kelas — ${homeroomClass} 📊`}
-              {activeTab === 'documents' && `Bank Modul & RPP — ${homeroomClass} 📁`}
-              {activeTab === 'settings' && 'Pengaturan Akun Wali Kelas ⚙️'}
-            </h2>
-            <p className="text-xs text-gray-400">
-              Portal Khusus <strong className="text-purple-300">Wali Kelas {homeroomClass}</strong> ({currentUser.nama})
-            </p>
+        <header className="h-16 md:h-20 border-b border-cardBorder px-4 sm:px-6 lg:px-8 flex items-center justify-between bg-darkBg/80 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Button for Mobile */}
+            <button 
+              onClick={() => setIsMobileOpen(true)}
+              className="md:hidden p-2 rounded-xl bg-cardBg border border-cardBorder text-gray-300 hover:text-white"
+              title="Buka Menu Navigasi"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div>
+              <h2 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center gap-2 truncate">
+                {activeTab === 'dashboard' && `Selamat Datang, ${currentUser.nama}! 👋`}
+                {activeTab === 'data_siswa' && `Data Siswa Wali Kelas — ${homeroomClass} 👥`}
+                {activeTab === 'absensi_harian' && `Absensi Harian Wali Kelas — ${homeroomClass} 📝`}
+                {activeTab === 'absensi_siswa' && `Rekap Absensi Siswa — ${homeroomClass} 📊`}
+                {activeTab === 'penilaian' && `Penilaian Siswa Wali Kelas — ${homeroomClass} 🎓`}
+                {activeTab === 'chat' && 'Pusat Asisten AI Wali Kelas 🤖'}
+                {activeTab === 'analytics' && `Analisis Pembelajaran Wali Kelas — ${homeroomClass} 📊`}
+                {activeTab === 'documents' && `Bank Modul & RPP — ${homeroomClass} 📁`}
+                {activeTab === 'settings' && 'Pengaturan Akun Wali Kelas ⚙️'}
+              </h2>
+              <p className="text-[10px] sm:text-xs text-gray-400 truncate hidden sm:block">
+                Portal Khusus <strong className="text-purple-300">Wali Kelas {homeroomClass}</strong> ({currentUser.nama})
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Wali Kelas {homeroomClass}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-[10px] sm:text-xs font-bold px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center gap-1.5 shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+              <span className="hidden xs:inline">Wali Kelas</span> {homeroomClass}
             </span>
 
             <button 
               onClick={handleLogout}
-              className="p-2.5 rounded-xl bg-cardBg border border-cardBorder text-gray-300 hover:text-red-400 hover:border-red-500/30 transition flex items-center gap-1.5 text-xs font-semibold"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-cardBg border border-cardBorder text-gray-300 hover:text-red-400 hover:border-red-500/30 transition flex items-center gap-1.5 text-xs font-semibold shrink-0"
               title="Keluar / Logout"
             >
-              <LogOut className="w-4 h-4" /> Keluar
+              <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </header>

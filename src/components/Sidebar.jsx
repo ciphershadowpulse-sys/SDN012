@@ -1,12 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, MessageSquare, BarChart3, FileText, 
-  Calendar, Settings, Sparkles, LogOut, Users, 
-  CalendarCheck, ClipboardList, GraduationCap
+  Settings, Sparkles, LogOut, Users, 
+  CalendarCheck, ClipboardList, GraduationCap, X
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout }) {
+export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout, isMobileOpen, setIsMobileOpen }) {
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'data_siswa', icon: Users, label: 'Data Siswa' },
@@ -21,48 +21,59 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
 
   const initials = currentUser?.nama ? currentUser.nama.substring(0, 2).toUpperCase() : 'WK';
 
-  return (
-    <aside className="w-64 bg-cardBg border-r border-cardBorder flex flex-col justify-between p-6 select-none">
+  const sidebarContent = (
+    <div className="h-full flex flex-col justify-between p-4 lg:p-5 select-none overflow-y-auto">
       <div>
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="bg-gradient-to-tr from-primaryPurple to-accentBlue p-2.5 rounded-xl text-white shadow-lg shadow-purple-500/20">
-            <Sparkles className="w-6 h-6" />
+        {/* Logo & Mobile Close Button */}
+        <div className="flex items-center justify-between gap-3 mb-6 lg:mb-8">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-tr from-primaryPurple to-accentBlue p-2 rounded-xl text-white shadow-md shadow-purple-500/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-base tracking-wide text-white">Digital Guru</h1>
+              <p className="text-[11px] text-gray-400">Workspace Wali Kelas</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-lg tracking-wide text-white">Digital Guru</h1>
-            <p className="text-xs text-gray-400">Workspace Wali Kelas</p>
-          </div>
+
+          {/* Close button for Mobile */}
+          <button 
+            onClick={() => setIsMobileOpen && setIsMobileOpen(false)} 
+            className="md:hidden text-gray-400 hover:text-white p-1 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Links */}
-        <nav className="space-y-2">
+        <nav className="space-y-1">
           {menuItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
-              <motion.button
+              <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                whileHover={{ scale: 1.03, x: 5 }}
-                whileTap={{ scale: 0.97 }}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium transition-colors text-left ${
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (setIsMobileOpen) setIsMobileOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-xs sm:text-sm transition-all text-left ${
                   isActive 
-                    ? 'bg-primaryPurple text-white shadow-lg shadow-primaryPurple/30' 
+                    ? 'bg-primaryPurple text-white shadow-md shadow-primaryPurple/30 font-semibold' 
                     : 'text-gray-400 hover:bg-cardBorder hover:text-white'
                 }`}
               >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </motion.button>
+                <item.icon className="w-4 h-4 sm:w-4 sm:h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </button>
             );
           })}
         </nav>
       </div>
 
       {/* User Mini Profile & Logout */}
-      <div className="pt-4 border-t border-cardBorder flex items-center justify-between">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white shadow shrink-0">
+      <div className="pt-3 border-t border-cardBorder flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center font-bold text-xs text-white shadow shrink-0">
             {initials}
           </div>
           <div className="truncate">
@@ -73,12 +84,45 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, onLogout
         
         <button 
           onClick={onLogout}
-          className="text-gray-400 hover:text-red-400 transition p-2 rounded-lg hover:bg-red-500/10 shrink-0" 
+          className="text-gray-400 hover:text-red-400 transition p-1.5 rounded-lg hover:bg-red-500/10 shrink-0" 
           title="Keluar / Logout"
         >
           <LogOut className="w-4 h-4" />
         </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar (hidden on mobile) */}
+      <aside className="hidden md:flex w-52 lg:w-56 bg-cardBg border-r border-cardBorder flex-col shrink-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 left-0 bottom-0 w-60 bg-cardBg z-50 md:hidden shadow-2xl border-r border-cardBorder"
+            >
+              {sidebarContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

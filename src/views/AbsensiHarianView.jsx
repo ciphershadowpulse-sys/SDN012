@@ -220,7 +220,7 @@ export default function AbsensiHarianView({
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="p-8 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
+      className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
@@ -229,15 +229,15 @@ export default function AbsensiHarianView({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCheck className="w-5 h-5" /> {toastMsg}
+            <CheckCheck className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* HEADER CONTROLS */}
-      <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-6">
+      <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 sm:gap-6">
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Pilih Kelas</label>
@@ -271,22 +271,22 @@ export default function AbsensiHarianView({
         <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setIsQrModalOpen(true)}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/25 flex items-center gap-2 hover:opacity-90 transition"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/25 flex items-center gap-2 hover:opacity-90 transition"
           >
-            <QrCode className="w-4 h-4 text-white" /> Scan Barcode / QR Presensi
+            <QrCode className="w-4 h-4 text-white" /> Scan Barcode / QR
           </button>
 
           <button 
             onClick={handleSaveAttendance}
-            className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
+            className="bg-gradient-to-r from-primaryPurple to-accentBlue px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
           >
-            <Save className="w-4 h-4" /> Simpan Presensi Harian
+            <Save className="w-4 h-4" /> Simpan Presensi
           </button>
         </div>
       </div>
 
       {/* STATS RINGKASAN HARI INI */}
-      <div className="grid grid-cols-5 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <div className="bg-cardBg border border-cardBorder p-5 rounded-2xl shadow-xl">
           <span className="text-xs text-gray-400 font-medium">Siswa Dipindai</span>
           <h3 className="text-2xl font-bold mt-1 text-white">{scannedCount} / {totalCount}</h3>
