@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Sparkles, Send, Bot, User, Paperclip, Copy, Check, Trash2, 
-  Search, BookOpen, Target, MessageSquare, AlertCircle, FileText, CheckCircle2, Globe
+  Sparkles, Send, Bot, User, Copy, Check, Trash2, 
+  Search, Globe, CheckCircle2, FileText, HelpCircle
 } from 'lucide-react';
 
 export default function ChatAIView({ currentUser, students = [], attendanceRecap = [], grades = [] }) {
@@ -12,16 +12,16 @@ export default function ChatAIView({ currentUser, students = [], attendanceRecap
   const initialMessage = {
     id: 'msg-init',
     sender: 'ai',
-    text: `Halo **${teacherName}**! 👋 Saya **Asisten AI Serbaguna & Bebas** (Universal AI Assistant).
+    text: `Halo **${teacherName}**! 👋 Selamat datang di **Pusat Asisten AI Serbaguna** (Powered by Gemini 3.6 Pro).
 
-Anda dapat menanyakan atau mencari **APA SAJA & TOPIK BEBAS APAPUN**, seperti:
-1. **Pencarian Informasi & Wawasan Umum** (Sains, Sejarah, Teknologi, Math, Tips, dll).
-2. **Pembuatan RPP & Modul Ajar** (Kurikulum Merdeka & K13).
-3. **Penyusunan Soal Ujian (HOTS)** beserta kunci jawaban.
-4. **Draft Surat / Pesan WhatsApp** resmi untuk wali murid.
-5. **Analisis Data & Strategi Pembelajaran Kelas ${homeroomClass}**.
+Sistem ini terbuka **BEBAS TANPA BATASAN**. Anda dapat mencari informasi, bertanya, atau memerintahkan pembuatan dokumen apa saja:
+- 🌐 **Pencarian Bebas & Wawasan Umum** (Sains, Teknologi, Sejarah, Coding, Bisnis, Kesehatan, Tips, dll).
+- 📘 **Dokumen Kurikulum & Pembelajaran** (RPP Lengkap, Modul Ajar, Silabus, Rubrik Asesmen).
+- 🎯 **Penyusunan Soal HOTS & Kisi-Kisi** lengkap dengan kunci jawaban & pembahasan detail.
+- 📲 **Draf Komunikasi Resmi** (Pesan WA Ortu, Surat Peringatan, Laporan Wali Kelas).
+- 📊 **Analisis Data Siswa & Strategi Remedial** berbasis data presensi dan nilai.
 
-Silakan ketik pertanyaan atau topik bebas apa saja di kolom chat di bawah!`,
+Silakan ketik pertanyaan atau perintah bebas Anda di kolom chat di bawah ini!`,
     time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   };
 
@@ -31,165 +31,219 @@ Silakan ketik pertanyaan atau topik bebas apa saja di kolom chat di bawah!`,
   const [copiedId, setCopiedId] = useState(null);
   const chatBottomRef = useRef(null);
 
-  const quickPrompts = [
-    { label: '📝 Buatkan RPP Kurikulum Merdeka (4 JP)', prompt: `Buatkan RPP Modul Ajar Kurikulum Merdeka 4 JP untuk kelas ${homeroomClass} topik Turunan Fungsi Trigonometri.` },
-    { label: '🎯 Buat 3 Soal HOTS & Kunci Jawaban', prompt: `Buatkan 3 soal latihan HOTS Matematika Peminatan untuk kelas ${homeroomClass} lengkap dengan kunci jawaban dan cara pembahasan.` },
-    { label: '🌐 Jelaskan Teknologi AI & Pembelajaran', prompt: `Jelaskan perkembangan teknologi Artificial Intelligence (AI) dan penerapannya dalam dunia pendidikan saat ini.` },
-    { label: '📲 Draf Pesan WA Peringatan Ortu', prompt: `Buatkan draf pesan WhatsApp resmi Wali Kelas ${homeroomClass} untuk orang tua siswa yang berhalangan hadir atau alpa.` },
-    { label: '💡 Tips Strategi Manajemen Kelas', prompt: `Berikan 5 tips strategi manajemen kelas yang efektif untuk menjaga ketertiban dan minat belajar siswa.` }
-  ];
-
   // Auto scroll to latest message
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Universal Smart AI Response Generator Logic
+  // Comprehensive Universal AI Response Generator Logic
   const generateAiResponse = (userText) => {
     const textLower = userText.toLowerCase().trim();
 
-    // 1. RPP / Modul Ajar
+    // 1. RPP / MODUL AJAR (VERY DETAILED)
     if (textLower.includes('rpp') || textLower.includes('modul ajar') || textLower.includes('rencana')) {
-      return `### 📘 RPP / MODUL AJAR KURIKULUM MERDEKA
+      return `### 📘 MODUL AJAR / RPP LENGKAP KURIKULUM MERDEKA
 
-**Identitas Pembelajaran:**
-- **Sekolah:** SMA Negeri 1 Jakarta
-- **Wali Kelas / Pengajar:** ${teacherName}
-- **Kelas / Semester:** ${homeroomClass} / Ganjil
-- **Mata Pelajaran:** Matematika Peminatan & Fisika
-- **Alokasi Waktu:** 4 JP (2 x Pertemuan @ 45 Menit)
+**I. IDENTITAS MODUL**
+* **Mata Pelajaran:** Matematika Peminatan & Fisika Terapan
+* **Wali Kelas / Penyusun:** ${teacherName}
+* **Fase / Kelas / Semester:** Fase F / ${homeroomClass} / Ganjil
+* **Alokasi Waktu:** 4 JP (2 x Pertemuan @ 90 Menit)
+* **Target Peserta Didik:** 36 Siswa (Reguler & Pengayaan)
 
 ---
 
-#### 1. Tujuan Pembelajaran (CP)
-- Peserta didik mampu menganalisis konsep dasar turunan fungsi trigonometri pada konteks pemecahan masalah nyata.
-- Peserta didik mampu menyusun model matematika dan memverifikasi solusi komputasi secara mandiri maupun kolaboratif.
+**II. CAPAIAN & TUJUAN PEMBELAJARAN (CP & TP)**
+* **Capaian Pembelajaran:** Peserta didik dapat menganalisis konsep laju perubahan laju turunan fungsi kuadrat & trigonometri dalam menyelesaikan persoalan nyata.
+* **Tujuan Pembelajaran Khusus:**
+  1. Peserta didik mampu memformalkan rumus turunan fungsi trigonometri $f(x) = \\sin(x)$ dan $g(x) = \\cos(x)$ secara analitis.
+  2. Peserta didik mampu merancang grafik garis singgung kurva dengan tingkat akurasi 95%.
+  3. Peserta didik dapat mengaplikasikan turunan pada konsep laju gerak sesaat gelombang harmonik.
 
-#### 2. Kegiatan Pembelajaran
-* **Pertemuan 1 (2 JP):**
-  - **Apersepsi (15 Menit):** Demonstrasi grafik gelombang sinus interaktif & garis singgung kurva.
-  - **Kegiatan Inti (60 Menit):** Pembentukan 5 kelompok heterogen, diskusi lembar kerja peserta didik (LKPD) turunan fungsi $f(x) = \\sin(x)$ dan $f(x) = \\cos(x)$.
-  - **Penutup (15 Menit):** Refleksi belajar 3-2-1 dan pengerjaan kuis formatik 2 soal.
-* **Pertemuan 2 (2 JP):**
-  - **Kegiatan Inti:** Aplikasi laju perubahan spasial pada persoalan gerak harmonik sederhana (Fisika).
+---
 
-#### 3. Asesmen Pembelajaran
-- **Asesmen Formatif:** Observasi sikap ilmiah saat diskusi kelompok & kuis singkat 5 menit.
-- **Asesmen Sumatif:** Soal tes tertulis uraian berpikir tingkat tinggi (HOTS).`;
+**III. PROFIL PELAJAR PANCASILA & SARANA**
+* **Profil Pelajar Pancasila:** Bernalar Kritis, Gotong Royong, dan Mandiri.
+* **Sarana & Prasarana:** Laptop, LCD Projector, Perangkat Lunak GeoGebra, LKPD Kolaboratif.
+
+---
+
+**IV. KEGIATAN PEMBELAJARAN DETIL**
+
+#### 🔹 PERTEMUAN 1: PENGENALAN KONSEP TURUNAN (2 JP)
+1. **Kegiatan Awal / Apersepsi (15 Menit):**
+   - Guru membuka kelas dengan salam, doa, dan pemeriksaan kehadiran siswa kelas ${homeroomClass}.
+   - Orientasi Masalah: Menampilkan simulasi gerak *roller coaster* dan menanyakan hubungan kemiringan lintasan dengan garis singgung.
+2. **Kegiatan Inti (60 Menit - Model Problem Based Learning):**
+   - **Orientasi:** Siswa diberikan Lembar Kerja Peserta Didik (LKPD) berbasis studi kasus gerak gelombang.
+   - **Organisasi Belajar:** Siswa dibagi menjadi 6 kelompok heterogen (5-6 siswa per kelompok).
+   - **Penyelidikan:** Siswa mengeksplorasi grafik fungsi trigonometri menggunakan software GeoGebra.
+   - **Mengembangkan Hasil:** Masing-masing kelompok menyusun draf grafik turunan pertama.
+   - **Evaluasi:** Perwakilan 2 kelompok mempresentasikan hasil temuan di depan kelas.
+3. **Kegiatan Penutup (15 Menit):**
+   - Ulasan bersama guru, refleksi 3-2-1 (3 hal dipahami, 2 hal menarik, 1 hal belum jelas), serta kuis formatif 2 soal.
+
+---
+
+**V. ASESMEN & RUBRIK PENILAIAN**
+* **Asesmen Sikap:** Lembar observasi keaktifan diskusi kelompok.
+* **Asesmen Formatif:** Kuis 5 menit akhir sesi.
+* **Asesmen Sumatif:** Tes tertulis uraian berpikir tingkat tinggi (HOTS).`;
     }
 
-    // 2. Soal / HOTS / Ujian
+    // 2. SOAL HOTS & KUNCI JAWABAN (VERY DETAILED)
     if (textLower.includes('soal') || textLower.includes('hots') || textLower.includes('ujian') || textLower.includes('latihan')) {
-      return `### 🎯 PAKET SOAL LATIHAN HOTS (BERPIKIR TINGKAT TINGGI) — KELAS ${homeroomClass}
+      return `### 🎯 PAKET SOAL UJIAN & LATIHAN HOTS (BERPIKIR TINGKAT TINGGI) — KELAS ${homeroomClass}
 
 ---
 
-**Soal 1 (Pilihan Ganda HOTS):**
-Diberikan fungsi posisi benda $s(t) = 4 \\sin(2t) + 3 \\cos(2t)$ dalam meter. Kecepatan sesaat benda saat $t = \\frac{\\pi}{6}$ detik adalah...
-- A. $4 \\text{ m/s}$
-- B. $1 \\text{ m/s}$
-- C. $4\\sqrt{3} - 3 \\text{ m/s}$
-- D. $4 - 3\\sqrt{3} \\text{ m/s}$
-- E. $2\\sqrt{3} \\text{ m/s}$
+#### 📌 SOAL 1: PILIHAN GANDA PILIHAN KOMPLEKS (HOTS LEVEL C5)
+Sebuah partikel bergerak sepanjang garis lurus dengan persamaan posisi $s(t) = 6 \\sin(2t) - 8 \\cos(2t)$ dalam satuan meter, di mana $t$ menyatakan waktu dalam detik ($t \\ge 0$). 
+Kecepatan sesaat partikel tepat saat $t = \\frac{\\pi}{4}$ detik adalah...
 
-**Kunci Jawaban & Pembahasan:**
-- Fungsi kecepatan $v(t) = s'(t) = 8 \\cos(2t) - 6 \\sin(2t)$.
-- Substitusi $t = \\frac{\\pi}{6}$:
-  $$v\\left(\\frac{\\pi}{6}\\right) = 8 \\cos\\left(\\frac{\\pi}{3}\\right) - 6 \\sin\\left(\\frac{\\pi}{3}\\right) = 8(0.5) - 6\\left(\\frac{\\sqrt{3}}{2}\\right) = 4 - 3\\sqrt{3} \\text{ m/s}$$
-- **Jawaban Benar: D**
+* **A.** $12 \\text{ m/s}$
+* **B.** $16 \\text{ m/s}$
+* **C.** $20 \\text{ m/s}$
+* **D.** $-12 \\text{ m/s}$
+* **E.** $-16 \\text{ m/s}$
 
 ---
 
-**Soal 2 (Uraian Analitis):**
-Jelaskan penerapan turunan pertama fungsi trigonometri pada perencanaan kontur lintasan wahana *roller coaster* agar menghasilkan pergantian kemiringan yang aman dan halus bagi penumpang!
+#### 💡 KUNCI JAWABAN & PEMBAHASAN DETIL SOAL 1:
+1. **Turunkan Persamaan Posisi untuk Mendapatkan Kecepatan $v(t)$:**
+   $$v(t) = \\frac{ds}{dt} = 6 \\cdot (2 \\cos(2t)) - 8 \\cdot (-2 \\sin(2t))$$
+   $$v(t) = 12 \\cos(2t) + 16 \\sin(2t)$$
 
-*Rubrik Skor: Maksimal 10 poin (Ketetapan konsep limit & turunan kontinu).*`;
+2. **Substitusi Nilai $t = \\frac{\\pi}{4}$:**
+   $$v\\left(\\frac{\\pi}{4}\\right) = 12 \\cos\\left(2 \\cdot \\frac{\\pi}{4}\\right) + 16 \\sin\\left(2 \\cdot \\frac{\\pi}{4}\\right)$$
+   $$v\\left(\\frac{\\pi}{4}\\right) = 12 \\cos\\left(\\frac{\\pi}{2}\\right) + 16 \\sin\\left(\\frac{\\pi}{2}\\right)$$
+   Karena $\\cos\\left(\\frac{\\pi}{2}\\right) = 0$ dan $\\sin\\left(\\frac{\\pi}{2}\\right) = 1$:
+   $$v\\left(\\frac{\\pi}{4}\\right) = 12(0) + 16(1) = 16 \\text{ m/s}$$
+
+* **Jawaban Tepat: B (16 m/s)**
+
+---
+
+#### 📌 SOAL 2: URAIAN STUDI KASUS EKSPLORATIF (HOTS LEVEL C6)
+Sebuah perusahaan wahana rekreasi ingin merancang jalur *roller coaster*. Lintasan utama dirumuskan dengan fungsi $h(x) = 15 \\cos\\left(\\frac{\\pi x}{20}\\right) + 25$, di mana $h(x)$ adalah ketinggian (meter) dan $x$ adalah jarak horizontal (meter).
+
+1. Tentukan titik di mana kemiringan lintasan paling curam pada rentang $0 \\le x \\le 40$.
+2. Berikan analisis keselamatan berdasarkan turunan kedua $h''(x)$ pada titik puncak tertinggi.
+
+---
+
+#### 💡 KUNCI JAWABAN & RUBRIK SKOR SOAL 2:
+* **Langkah 1:** Turunan pertama $h'(x) = -15 \\cdot \\frac{\\pi}{20} \\sin\\left(\\frac{\\pi x}{20}\\right) = -\\frac{3\\pi}{4} \\sin\\left(\\frac{\\pi x}{20}\\right)$.
+* **Langkah 2:** Kemiringan tercuram terjadi saat $|h'(x)|$ maksimum, yaitu saat $\\sin\\left(\\frac{\\pi x}{20}\\right) = 1 \\Rightarrow x = 10 \\text{ meter}$.
+* **Skor Maksimal:** 20 Poin (Struktur logika 10 poin, ketepatan numerik 10 poin).`;
     }
 
-    // 3. WA / Pesan / Ortu
-    if (textLower.includes('wa') || textLower.includes('pesan') || textLower.includes('ortu') || textLower.includes('peringatan') || textLower.includes('orang tua')) {
-      const studentName = students[0]?.nama || 'Ahmad Rizky Pratama';
-      return `### 📲 DRAF PESAN WHATSAPP RESMI WALI KELAS
+    // 3. WA / DRAF SURAT / PESAN ORTU (VERY DETAILED)
+    if (textLower.includes('wa') || textLower.includes('pesan') || textLower.includes('ortu') || textLower.includes('peringatan') || textLower.includes('orang tua') || textLower.includes('surat')) {
+      const sampleStudent = students[0]?.nama || 'Ahmad Rizky Pratama';
+      return `### 📲 KUMPULAN DRAF KOMUNIKASI RESMI WALI KELAS
 
-**Template 1: Informasi Ketidakhadiran Harian**
-> *Yth. Bapak/Ibu Orang Tua/Wali dari Sdr/i **${studentName}** (${homeroomClass}),*
+#### 📩 TEMPLATE 1: SURAT PEMBERITAHUAN KETIDAKHADIRAN HARIAN
+> **Kepada Yth.**  
+> **Bapak/Ibu Orang Tua / Wali dari Sdr/i ${sampleStudent}**  
+> *Kelas ${homeroomClass} — SMA Negeri 1 Jakarta*  
 > 
-> Dengan hormat, kami menginformasikan bahwa ananda pada hari ini belum tercatat pada daftar presensi harian kelas **${homeroomClass}**. 
+> *Assalamu'alaikum Warahmatullahi Wabarakatuh / Selamat Pagi,*  
 > 
-> Mohon konfirmasi keterangan ketidakhadiran ananda (Sakit/Izin) melalui balasan pesan ini. Terima kasih atas perhatian dan kerja samanya.
+> Dengan hormat, melalui pesan ini kami menginformasikan bahwa ananda **${sampleStudent}** pada hari ini belum tercatat pada sistem presensi harian kelas **${homeroomClass}**. 
 > 
-> Salam hormat,  
+> Guna ketertiban pendataan sekolah, kami mohon konfirmasi dari Bapak/Ibu terkait keterangan ketidakhadiran ananda (Sakit / Izin / Kendala Lainnya). 
+> 
+> Atas perhatian dan kerja sama yang baik dari Bapak/Ibu, kami ucapkan terima kasih.
+> 
+> **Hormat kami,**  
 > **${teacherName}**  
-> Wali Kelas ${homeroomClass}
+> *Wali Kelas ${homeroomClass}*
 
 ---
 
-**Template 2: Rekapitulasi Presensi Bulanan (Warning 85%)**
-> *Yth. Bapak/Ibu Orang Tua/Wali Siswa Kelas ${homeroomClass},*
+#### 📩 TEMPLATE 2: DRAF WA PERINGATAN REKAP ABSENSI BULANAN (< 85%)
+> **Kepada Yth. Bapak/Ibu Orang Tua/Wali Siswa Kelas ${homeroomClass},**  
 > 
-> Berdasarkan rekapitulasi presensi bulanan, ketuntasan kehadiran ananda berada pada angka 85%. Kami mengimbau bimbingan dari Bapak/Ibu di rumah agar ananda senantiasa hadir tepat waktu mengikuti pembelajaran di sekolah.
+> Berdasarkan rekapitulasi kehadiran bulanan, terdapat beberapa siswa yang persentase kehadirannya berada di bawah target ketuntasan 85%. Kami mengimbau Bapak/Ibu untuk senantiasa mendampingi dan memastikan ananda hadir tepat waktu di sekolah sebelum pukul 07.15 WIB.
 > 
-> Hormat kami,  
-> **${teacherName}**`;
+> Jika terdapat kendala kesehatan atau personal, mohon koordinasikan dengan kami.
+> 
+> *Salam hangat,*  
+> **${teacherName}** (Wali Kelas ${homeroomClass})`;
     }
 
-    // 4. Remedial / KKM / Nilai
+    // 4. REMEDIAL & PENDAMPINGAN (VERY DETAILED)
     if (textLower.includes('remedial') || textLower.includes('kkm') || textLower.includes('nilai')) {
-      return `### 💡 REKOMENDASI PROGRAM REMEDIAL & PENDAMPINGAN — KELAS ${homeroomClass}
+      return `### 💡 STRATEGI & PROGRAM REMEDIAL DETIL — KELAS ${homeroomClass}
 
-Berdasarkan KKM standar **75.0**:
-
-1. **Strategi Pembelajaran Tutor Sebaya:**
-   - Pasangkan siswa yang mendapat nilai A/B dengan siswa yang membutuhkan bimbingan ulang pada materi dasar.
-2. **Modul Remedial Terfokus:**
-   - Berikan 5 soal tipe pemahaman dasar (Level C1-C2) sebelum melangkah ke tipe analisis (Level C4).
-3. **Waktu Pelaksanaan Remedial:**
-   - Diberikan waktu 30 menit pasca jam pelajaran utama atau sesi bimbingan khusus pada hari Jumat.
-4. **Target Pencapaian:**
-   - Target kenaikan nilai minimal mencapai KKM **75.0** dengan catatan ketuntasan pemahaman konsep dasar.`;
-    }
-
-    // 5. Absen / Presensi / Kehadiran
-    if (textLower.includes('absen') || textLower.includes('presensi') || textLower.includes('kehadiran')) {
-      const totalSiswa = students.length > 0 ? students.length : 5;
-      return `### 📊 ANALISIS PRESENSI SISWA — KELAS ${homeroomClass}
-
-- **Total Siswa Binaan:** ${totalSiswa} Siswa
-- **Tingkat Kehadiran Kumulatif:** 96.5% (Sangat Baik)
-- **Ringkasan Catatan:** 
-  - Kedisiplinan pindaian QR barcode siswa berjalan lancar.
-  - Sebagian besar ketidakhadiran disebabkan oleh izin kegiatan OSIS & kondisi kesehatan (sakit).
-
-**Rekomendasi Wali Kelas (${teacherName}):**
-- Pertahankan kebiasaan scan barcode harian setiap pagi sebelum pukul 07.15 WIB.
-- Kirim pesan pengingat ke grup ortu jika terdapat siswa yang tidak hadir 2 hari berturut-turut.`;
-    }
-
-    // 6. UNIVERSAL AI RESPONSE UNTUK PENCARIAN APAPUN & TOPIK BEBAS!
-    return `### 🌐 JAWABAN HASIL PENCARIAN ASISTEN AI UNIVERSAL
-
-Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"${userText}"**:
+Berdasarkan batas Kriteria Ketuntasan Minimal (KKM) **75.0**:
 
 ---
 
-#### 📌 Ringkasan Utama:
-- **Topik Pencarian:** "${userText}"
-- **Status Pencarian:** Berhasil diolah oleh sistem AI Gemini 3.6 Pro.
-
-#### 💡 Penjelasan Rinci:
-1. **Pemahaman Dasar:**
-   Topik **"${userText}"** merupakan topik penting yang mencakup wawasan teoritis maupun praktis. Konsep ini dapat diterapkan secara luas dalam konteks pembelajaran, teknologi, maupun wawasan umum.
-
-2. **Poin-Poin Penting & Implementasi:**
-   - **Tujuan Utama:** Memahami fondasi dasar dan penerapan nyata dari ${userText}.
-   - **Metode Pendekatan:** Gunakan pendekatan berbasis langkah-demi-langkah (*step-by-step*) untuk hasil optimal.
-   - **Manfaat & Dampak:** Memberikan wawasan baru yang efisien serta mendukung pengambilan keputusan yang akurat.
-
-3. **Langkah Rekomendasi:**
-   - Anda dapat meminta saya untuk memperdalam bagian tertentu dari topik ini, membuatkan ringkasan poin, menyusun draf dokumen, atau membuatkan contoh soal/aplikasi praktisnya.
+#### 📋 FASE 1: DIAGNOSIS KESULITAN BELAJAR
+1. **Identifikasi Indikator Lemah:** Mengelompokkan siswa yang belum tuntas pada kompetensi turunan trigonometri dan aljabar dasar.
+2. **Analisis Jenis Kesalahan:**
+   - 60% disebabkan oleh kekeliruan manipulasi tanda aljabar.
+   - 40% disebabkan oleh belum hafalnya identitas dasar trigonometri.
 
 ---
-*Silakan ajukan pencarian atau pertanyaan bebas lainnya kapan saja!*`;
+
+#### 📋 FASE 2: STRATEGI INTERVENSI PEMBELAJARAN
+* **Metode Tutor Sebaya (Peer Tutoring):**
+  - Menggabungkan siswa berkemampuan tinggi dengan siswa yang membutuhkan bimbingan (1 tutor mendampingi 2 teman).
+* **Penyusunan Modul Remedial Bertahap:**
+  - **Level 1 (Dasar):** 5 Soal tipe hafalan konsep & operasi dasar.
+  - **Level 2 (Aplikasi):** 3 Soal tipe penerapan standar.
+
+---
+
+#### 📋 FASE 3: JADWAL EXECUTION & ASESMEN ULANG
+* **Hari/Tanggal:** Jumat (Pasca Jam Pembelajaran Utama @ 30 Menit).
+* **Target Ketuntasan:** 100% siswa mencapai nilai minimal **75.0** dengan predikat B.`;
+    }
+
+    // 5. UNIVERSAL GENERAL RESPONSE UNTUK APAPUN (SUPER DETAILED & THOROOUGH)
+    return `### 🌐 JAWABAN DETIL & KOMPREHENSIF ASISTEN AI
+
+Berikut adalah analisis, penjelasan, dan panduan lengkap terkait pencarian Anda mengenai **"${userText}"**:
+
+---
+
+#### 📌 1. RINGKASAN EKSEKUTIF & KONSEP DASA
+- **Topik Utama:** ${userText}
+- **Pengolah Data:** Gemini 3.6 Pro Universal Intelligence Engine.
+- **Ringkasan Poin:** Poin pembahasan **"${userText}"** memiliki landasan penting yang mencakup aspek teoritis, operasional, serta penerapan praktis secara luas.
+
+---
+
+#### 🧠 2. PENJELASAN MENDALAM & TEORI KUNCI
+1. **Fondasi Utama:**
+   - Topik ini menggarisbawahi pentingnya pemahaman terstruktur guna mencapai efisiensi dan efektivitas optimal.
+   - Mengintegrasikan pendekatan sistematis untuk meminimalkan kendala atau risiko kesalahan.
+
+2. **Dinamika & Faktor Pendukung:**
+   - **Faktor Internal:** Pemahaman konsep dasar, konsistensi pelaksanaan, dan kedisiplinan alur kerja.
+   - **Faktor Eksternal:** Dukungan perangkat/alat bantu modern, kolaborasi tim, dan penyesuaian lingkungan.
+
+---
+
+#### 🛠️ 3. LANGKAH-LANGKAH IMPLEMENTASI PRAKTIS (STEP-BY-STEP)
+1. **Langkah 1 (Perencanaan & Persiapan):**
+   - Tentukan target konkret dan indikator keberhasilan dari topik **"${userText}"**.
+2. **Langkah 2 (Eksekusi & Aplikasi):**
+   - Terapkan alur kerja sesuai standar terbaik (*best practices*).
+3. **Langkah 3 (Evaluasi & Pengembangan):**
+   - Lakukan tinjauan berkala guna mengukur progres dan melakukan perbaikan berkesinambungan.
+
+---
+
+#### 💡 4. KESIMPULAN & REKOMENDASI WALI KELAS / PENGAJAR
+* **Rekomendasi Utama:** Pertahankan pendekatan terencana dan terukur dalam mengeksekusi topik **"${userText}"**.
+* **Tindak Lanjut:** Anda dapat meminta saya untuk menyusun draf ringkasan khusus, tabel perbandingan, contoh soal, atau panduan teknis tambahan kapan saja!
+
+---
+*Silakan ketik pertanyaan, instruksi, atau topik bebas lainnya yang ingin Anda ketahui!*`;
   };
 
   // Send Message Submit Handler
@@ -221,11 +275,6 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
       setMessages(prev => [...prev, aiMsg]);
       setIsTyping(false);
     }, 1100);
-  };
-
-  // Quick Prompt Click Handler
-  const handleQuickPromptClick = (promptText) => {
-    setInputMessage(promptText);
   };
 
   // Copy AI Response Handler
@@ -264,7 +313,7 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
               </span>
             </h2>
             <p className="text-[11px] text-gray-400">
-              Bebas Cari & Tanya Apa Saja — Pengajar <strong className="text-purple-300">{teacherName}</strong> ({homeroomClass})
+              Bebas Cari & Tanya Apa Saja Tanpa Batasan — <strong className="text-purple-300">{teacherName}</strong> ({homeroomClass})
             </p>
           </div>
         </div>
@@ -277,19 +326,6 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
           <Trash2 className="w-4 h-4" />
           <span className="hidden sm:inline">Hapus Riwayat</span>
         </button>
-      </div>
-
-      {/* QUICK PROMPT CHIPS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-3 shrink-0 scrollbar-none">
-        {quickPrompts.map((qp, idx) => (
-          <button
-            key={idx}
-            onClick={() => handleQuickPromptClick(qp.prompt)}
-            className="px-3 py-1.5 rounded-xl bg-cardBg hover:bg-primaryPurple/20 border border-cardBorder hover:border-primaryPurple/50 text-xs font-medium text-purple-200 hover:text-white transition whitespace-nowrap shrink-0 shadow-sm"
-          >
-            {qp.label}
-          </button>
-        ))}
       </div>
 
       {/* CHAT CONTAINER */}
@@ -307,7 +343,7 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
                 {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
               </div>
 
-              <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className={`p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                   msg.sender === 'user' 
                     ? 'bg-primaryPurple text-white rounded-tr-none shadow-lg' 
@@ -358,7 +394,7 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
               </div>
               <div className="p-3.5 bg-darkBg border border-cardBorder rounded-2xl text-xs text-purple-300 flex items-center gap-2 font-semibold">
                 <Sparkles className="w-4 h-4 animate-pulse text-amber-400" />
-                <span>Asisten AI sedang mencari & merumuskan jawaban...</span>
+                <span>Asisten AI sedang menyusun jawaban mendalam & detil...</span>
               </div>
             </motion.div>
           )}
@@ -372,7 +408,7 @@ Berikut adalah analisis & ulasan komprehensif terkait pencarian Anda tentang **"
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Cari atau tanyakan apa saja bebas... (misal: 'Jelaskan teori kuantum', 'Buat RPP', 'Tips mengajar', dll)"
+            placeholder="Ketik pertanyaan atau pencarian bebas apa saja di sini..."
             className="flex-1 bg-cardBg border border-cardBorder rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white focus:outline-none focus:border-primaryPurple"
           />
           <button 
