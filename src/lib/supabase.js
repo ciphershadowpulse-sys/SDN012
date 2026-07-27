@@ -247,6 +247,7 @@ export async function fetchGradesSupabase(defaultGrades) {
       studentId: g.student_id || g.studentId,
       nama: g.nama,
       kelas: g.kelas,
+      mapel: g.mapel || 'Matematika Peminatan',
       tugas1: Number(g.tugas1 || 0),
       tugas2: Number(g.tugas2 || 0),
       uh: Number(g.uh || 0),
@@ -254,7 +255,8 @@ export async function fetchGradesSupabase(defaultGrades) {
       uas: Number(g.uas || 0),
       nilaiAkhir: Number(g.nilai_akhir || g.nilaiAkhir || 0),
       predikat: g.predikat || 'C',
-      status: g.status || 'Remedial'
+      status: g.status || 'Remedial',
+      catatanAi: g.catatan_ai || g.catatanAi || ''
     }));
   } catch (err) {
     console.warn('Gagal memuat nilai dari Supabase:', err);
@@ -269,6 +271,7 @@ export async function saveGradesSupabase(gradesArray) {
       student_id: g.studentId || g.student_id,
       nama: g.nama || '',
       kelas: g.kelas || '',
+      mapel: g.mapel || 'Matematika Peminatan',
       tugas1: g.tugas1 || 0,
       tugas2: g.tugas2 || 0,
       uh: g.uh || 0,
@@ -276,9 +279,10 @@ export async function saveGradesSupabase(gradesArray) {
       uas: g.uas || 0,
       nilai_akhir: g.nilaiAkhir || g.nilai_akhir || 0,
       predikat: g.predikat || 'C',
-      status: g.status || 'Tuntas'
+      status: g.status || 'Tuntas',
+      catatan_ai: g.catatanAi || g.catatan_ai || ''
     }));
-    const { error } = await supabase.from('grades').upsert(payload, { onConflict: 'student_id' });
+    const { error } = await supabase.from('grades').upsert(payload, { onConflict: 'student_id,mapel' });
     if (error) throw error;
     return { success: true, mode: 'supabase' };
   } catch (err) {
@@ -347,7 +351,14 @@ export async function fetchLessonPlansSupabase(defaultPlans) {
       kelas: p.kelas,
       mapel: p.mapel,
       fase: p.fase || 'Fase F',
+      kurikulum: p.kurikulum || 'Kurikulum Merdeka',
+      alokasiWaktu: p.alokasi_waktu || p.alokasiWaktu || '',
+      penulis: p.penulis || '',
+      tanggal: p.tanggal || '',
+      format: p.format || 'PDF',
       ringkasan: p.ringkasan,
+      tujuan: p.tujuan || '',
+      langkah: p.langkah || [],
       fileUrl: p.file_url || p.fileUrl || '/docs/modul_vektor.pdf',
       status: p.status || 'Terverifikasi'
     }));
@@ -366,7 +377,14 @@ export async function saveLessonPlanSupabase(plan) {
       kelas: plan.kelas,
       mapel: plan.mapel,
       fase: plan.fase || 'Fase F',
+      kurikulum: plan.kurikulum || 'Kurikulum Merdeka',
+      alokasi_waktu: plan.alokasiWaktu || plan.alokasi_waktu || '',
+      penulis: plan.penulis || '',
+      tanggal: plan.tanggal || '',
+      format: plan.format || 'PDF',
       ringkasan: plan.ringkasan || '',
+      tujuan: plan.tujuan || '',
+      langkah: plan.langkah || [],
       file_url: plan.fileUrl || plan.file_url || '',
       status: plan.status || 'Terverifikasi'
     };
@@ -375,6 +393,56 @@ export async function saveLessonPlanSupabase(plan) {
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
     console.error('Gagal menyimpan modul/RPP ke Supabase:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+// ==========================================
+// 8. SCHOOL SETTINGS / PENGATURAN SEKOLAH
+// ==========================================
+export async function fetchSchoolSettingsSupabase(teacherUsername, defaultSettings) {
+  if (!isSupabaseConfigured || !supabase) return defaultSettings;
+  try {
+    const { data, error } = await supabase
+      .from('school_settings')
+      .select('*')
+      .eq('teacher_username', teacherUsername)
+      .maybeSingle();
+    if (error || !data) return defaultSettings;
+    return {
+      namaSekolah: data.nama_sekolah || defaultSettings.namaSekolah,
+      tahunAjaran: data.tahun_ajaran || defaultSettings.tahunAjaran,
+      kkmDefault: data.kkm_default || defaultSettings.kkmDefault,
+      kurikulum: data.kurikulum || defaultSettings.kurikulum,
+      aiModel: data.ai_model || defaultSettings.aiModel,
+      autoWaAlert: data.auto_wa_alert !== undefined ? data.auto_wa_alert : defaultSettings.autoWaAlert
+    };
+  } catch (err) {
+    console.warn('Gagal memuat pengaturan sekolah dari Supabase:', err);
+    return defaultSettings;
+  }
+}
+
+export async function saveSchoolSettingsSupabase(teacherUsername, settings) {
+  if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
+  try {
+    const payload = {
+      teacher_username: teacherUsername,
+      nama_sekolah: settings.namaSekolah || 'SMA Negeri 1 Jakarta',
+      tahun_ajaran: settings.tahunAjaran || '',
+      kkm_default: settings.kkmDefault || 75,
+      kurikulum: settings.kurikulum || 'Kurikulum Merdeka',
+      ai_model: settings.aiModel || '',
+      auto_wa_alert: settings.autoWaAlert !== undefined ? settings.autoWaAlert : true,
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase
+      .from('school_settings')
+      .upsert([payload], { onConflict: 'teacher_username' });
+    if (error) throw error;
+    return { success: true, mode: 'supabase' };
+  } catch (err) {
+    console.error('Gagal menyimpan pengaturan sekolah ke Supabase:', err);
     return { success: false, error: err.message };
   }
 }
