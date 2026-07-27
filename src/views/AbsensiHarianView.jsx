@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Calendar, CheckCircle2, AlertCircle, Clock, Save, 
+import {
+  Calendar, CheckCircle2, AlertCircle, Clock, Save,
   CheckCheck, RotateCcw, Sparkles, Filter, Check, ShieldAlert,
   QrCode, Scan, X, UserCheck, RefreshCw, Upload, Image as ImageIcon,
-  Users, Eye, EyeOff, ArrowLeft
+  Users, Eye, EyeOff, ArrowLeft, Camera, CameraOff, SwitchCamera,
+  Keyboard, ImagePlus, Zap
 } from 'lucide-react';
 import { USER_QR_SAMPLES } from '../data/initialData';
 import { saveDailyAttendanceSupabase, saveAttendanceRecapSupabase } from '../lib/supabase';
+import { Html5Qrcode } from 'html5-qrcode';
 
 
 
-export default function AbsensiHarianView({ 
-  students, 
-  classes, 
-  attendanceRecap, 
+export default function AbsensiHarianView({
+  students,
+  classes,
+  attendanceRecap,
   setAttendanceRecap,
   scannedStudentIds,
   setScannedStudentIds,
@@ -25,7 +27,7 @@ export default function AbsensiHarianView({
 }) {
   const [selectedClass, setSelectedClass] = useState(classes[0] || 'XII MIPA 1');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+
   // View Mode ('only_scanned' | 'all')
   const [viewMode, setViewMode] = useState('only_scanned');
 
@@ -37,6 +39,15 @@ export default function AbsensiHarianView({
   const [manualNisn, setManualNisn] = useState('');
   const [lastScanned, setLastScanned] = useState(null);
   const [isScanningAnim, setIsScanningAnim] = useState(false);
+
+  // Camera Scanner State
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [facingMode, setFacingMode] = useState('environment'); // 'environment' (back) | 'user' (front)
+  const [scannerTab, setScannerTab] = useState('camera'); // 'camera' | 'manual' | 'upload'
+  const html5QrCodeRef = useRef(null);
+  const scannerContainerRef = useRef(null);
+  const isProcessingRef = useRef(false);
 
   // Class Students list
   const classStudents = students.filter(s => s.kelas === selectedClass);
@@ -130,16 +141,19 @@ export default function AbsensiHarianView({
   };
 
   // Process QR Scan Action (Matches NISN, altNisn, or Student ID)
-  const processQrScanByCode = (qrCodeInput, sampleInfo = null) => {
+  const processQrScanByCode = useCallback((qrCodeInput, sampleInfo = null) => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
     setIsScanningAnim(true);
-    
+
     setTimeout(() => {
       setIsScanningAnim(false);
+      isProcessingRef.current = false;
 
       const codeClean = (qrCodeInput || '').trim().toLowerCase();
 
       // Find matching student
-      let matched = students.find(s => 
+      let matched = students.find(s =>
         (s.nisn && s.nisn.toLowerCase() === codeClean) ||
         (s.altNisn && s.altNisn.toLowerCase() === codeClean) ||
         (s.id && s.id.toLowerCase() === codeClean)
@@ -152,7 +166,7 @@ export default function AbsensiHarianView({
 
       if (matched) {
         const timeString = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        
+
         // Mark as Hadir
         setAttendanceRecords(prev => ({
           ...prev,
@@ -178,12 +192,148 @@ export default function AbsensiHarianView({
 
         setLastScanned(scanResult);
         setScannedSessionList(prev => [scanResult, ...prev.filter(x => x.id !== matched.id)]);
-        triggerToast(`QR Barcode Terbaca: ${matched.nama} (${matched.kelas}) HADIR!`);
+        triggerToast(`QR Terbaca: ${matched.nama} (${matched.kelas}) HADIR!`);
       } else {
-        alert(`Kode QR "${qrCodeInput}" tidak terdaftar pada database siswa.`);
+        triggerToast(`⚠️ Kode QR "${qrCodeInput}" tidak terdaftar.`);
       }
-    }, 600);
-  };
+    }, 400);
+  }, [students, scannedStudentIds, setAttendanceRecords, setScannedStudentIds, setScannedSessionList]);
+
+  // ==========================================
+  // CAMERA QR SCANNER (html5-qrcode)
+  // ==========================================
+  const startCamera = useCallback(async () => {
+    setCameraError(null);
+
+    // Cleanup existing scanner instance
+    if (html5QrCodeRef.current) {
+      try {
+        const state = html5QrCodeRef.current.getState();
+        if (state === 2) { // SCANNING
+          await html5QrCodeRef.current.stop();
+        }
+        html5QrCodeRef.current.clear();
+      } catch (e) {
+        // ignore cleanup errors
+      }
+      html5QrCodeRef.current = null;
+    }
+
+    const containerId = 'qr-reader-container';
+    const container = document.getElementById(containerId);
+    if (!container) {
+      setCameraError('Container kamera tidak ditemukan.');
+      return;
+    }
+
+    // Clear container content
+    container.innerHTML = '';
+
+    try {
+      const html5QrCode = new Html5Qrcode(containerId);
+      html5QrCodeRef.current = html5QrCode;
+
+      const qrCodeSuccessCallback = (decodedText) => {
+        processQrScanByCode(decodedText);
+      };
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 200, height: 200 },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0], // SCAN_TYPE_CAMERA only
+      };
+
+      await html5QrCode.start(
+        { facingMode },
+        config,
+        qrCodeSuccessCallback,
+        () => { } // ignore error (no QR found in frame)
+      );
+
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error('Camera start error:', err);
+      let errorMsg = 'Gagal mengakses kamera.';
+
+      if (typeof err === 'string') {
+        if (err.includes('NotAllowedError') || err.includes('Permission')) {
+          errorMsg = 'Izin kamera ditolak. Silakan izinkan akses kamera di browser Anda.';
+        } else if (err.includes('NotFoundError') || err.includes('Requested device not found')) {
+          errorMsg = 'Kamera tidak ditemukan. Pastikan perangkat Anda memiliki kamera.';
+        } else if (err.includes('NotReadableError')) {
+          errorMsg = 'Kamera sedang digunakan oleh aplikasi lain.';
+        } else {
+          errorMsg = err;
+        }
+      } else if (err?.message) {
+        if (err.message.includes('NotAllowed') || err.message.includes('Permission')) {
+          errorMsg = 'Izin kamera ditolak. Silakan izinkan akses kamera di browser Anda.';
+        } else if (err.message.includes('NotFound') || err.message.includes('Requested device not found')) {
+          errorMsg = 'Kamera tidak ditemukan. Pastikan perangkat Anda memiliki kamera.';
+        } else if (err.message.includes('NotReadable')) {
+          errorMsg = 'Kamera sedang digunakan oleh aplikasi lain.';
+        } else {
+          errorMsg = err.message;
+        }
+      }
+
+      setCameraError(errorMsg);
+      setIsCameraActive(false);
+    }
+  }, [facingMode, processQrScanByCode]);
+
+  const stopCamera = useCallback(async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        const state = html5QrCodeRef.current.getState();
+        if (state === 2) {
+          await html5QrCodeRef.current.stop();
+        }
+        html5QrCodeRef.current.clear();
+      } catch (e) {
+        // ignore
+      }
+      html5QrCodeRef.current = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  // Toggle camera facing mode
+  const toggleCameraFacing = useCallback(async () => {
+    await stopCamera();
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+  }, [stopCamera]);
+
+  // Start camera when scanner tab is 'camera' and modal is open
+  useEffect(() => {
+    if (isQrModalOpen && scannerTab === 'camera') {
+      // Short delay to let DOM render
+      const timer = setTimeout(() => {
+        startCamera();
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      stopCamera();
+    }
+  }, [isQrModalOpen, scannerTab, facingMode]);
+
+  // Cleanup on modal close
+  useEffect(() => {
+    if (!isQrModalOpen) {
+      stopCamera();
+      setCameraError(null);
+    }
+  }, [isQrModalOpen, stopCamera]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   // Handle Manual NISN Scan Submit
   const handleManualNisnSubmit = (e) => {
@@ -193,16 +343,30 @@ export default function AbsensiHarianView({
     setManualNisn('');
   };
 
-  // Handle File Upload Barcode
-  const handleFileUpload = (e) => {
+  // Handle File Upload scan via html5-qrcode
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.name.includes('1') || file.name.includes('qr1')) {
-      processQrScanByCode('0012345688', USER_QR_SAMPLES[0]);
-    } else {
-      processQrScanByCode('3184861266', USER_QR_SAMPLES[1]);
+    try {
+      // Use html5-qrcode to scan from image file
+      const html5QrCode = new Html5Qrcode('qr-file-upload-container');
+      const result = await html5QrCode.scanFile(file, true);
+      html5QrCode.clear();
+      processQrScanByCode(result);
+    } catch (err) {
+      // Fallback: try filename-based matching for sample QR images
+      const fileName = file.name.toLowerCase();
+      if (fileName.includes('1') || fileName.includes('qr1')) {
+        processQrScanByCode('0012345688', USER_QR_SAMPLES[0]);
+      } else if (fileName.includes('2') || fileName.includes('qr2')) {
+        processQrScanByCode('3184861266', USER_QR_SAMPLES[1]);
+      } else {
+        triggerToast('⚠️ Tidak dapat membaca kode QR dari gambar ini.');
+      }
     }
+    // Reset file input
+    e.target.value = '';
   };
 
   // Summary counts
@@ -216,7 +380,7 @@ export default function AbsensiHarianView({
 
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
@@ -225,11 +389,11 @@ export default function AbsensiHarianView({
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {showToast && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
+            className="fixed top-20 right-4 sm:right-8 z-[60] bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
             <CheckCheck className="w-4 h-4 sm:w-5 sm:h-5" /> {toastMsg}
           </motion.div>
@@ -243,7 +407,7 @@ export default function AbsensiHarianView({
             <label className="block text-xs text-gray-400 mb-1">Pilih Kelas</label>
             <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
               <Filter className="w-4 h-4 text-primaryPurple" />
-              <select 
+              <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
@@ -257,7 +421,7 @@ export default function AbsensiHarianView({
             <label className="block text-xs text-gray-400 mb-1">Tanggal Presensi</label>
             <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
               <Calendar className="w-4 h-4 text-accentBlue" />
-              <input 
+              <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
@@ -269,14 +433,14 @@ export default function AbsensiHarianView({
 
         {/* QUICK ACTIONS */}
         <div className="flex flex-wrap items-center gap-3">
-          <button 
+          <button
             onClick={() => setIsQrModalOpen(true)}
             className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/25 flex items-center gap-2 hover:opacity-90 transition"
           >
             <QrCode className="w-4 h-4 text-white" /> Scan Barcode / QR
           </button>
 
-          <button 
+          <button
             onClick={handleSaveAttendance}
             className="bg-gradient-to-r from-primaryPurple to-accentBlue px-4 py-2 sm:px-6 sm:py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
           >
@@ -339,9 +503,9 @@ export default function AbsensiHarianView({
             <h3 className="font-bold text-sm text-white">
               Input Presensi Siswa — Kelas {selectedClass} ({selectedDate})
             </h3>
-            
+
             {/* View Mode Toggle Button */}
-            <button 
+            <button
               onClick={() => setViewMode(viewMode === 'only_scanned' ? 'all' : 'only_scanned')}
               className="px-3 py-1 rounded-lg bg-darkBg border border-cardBorder text-gray-300 text-xs font-semibold flex items-center gap-1.5 hover:text-white transition"
             >
@@ -350,7 +514,7 @@ export default function AbsensiHarianView({
             </button>
           </div>
 
-          <button 
+          <button
             onClick={() => setIsQrModalOpen(true)}
             className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition shadow"
           >
@@ -370,9 +534,8 @@ export default function AbsensiHarianView({
                   {/* Info Siswa */}
                   <div className="flex items-center gap-4 min-w-[240px]">
                     <span className="text-xs font-mono text-gray-500 w-6">#{idx + 1}</span>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow ${
-                      student.gender === 'Laki-Laki' ? 'bg-blue-600' : 'bg-pink-600'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-xs shadow ${student.gender === 'Laki-Laki' ? 'bg-blue-600' : 'bg-pink-600'
+                      }`}>
                       {student.nama.substring(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -402,11 +565,10 @@ export default function AbsensiHarianView({
                           key={opt.key}
                           type="button"
                           onClick={() => handleStatusChange(student.id, opt.key)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                            isActive 
-                              ? `${opt.activeClass} shadow-md` 
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${isActive
+                              ? `${opt.activeClass} shadow-md`
                               : 'bg-darkBg text-gray-400 border-cardBorder hover:text-white hover:border-gray-500'
-                          }`}
+                            }`}
                         >
                           {opt.label}
                         </button>
@@ -416,7 +578,7 @@ export default function AbsensiHarianView({
 
                   {/* Input Catatan / Alasan */}
                   <div className="w-64">
-                    <input 
+                    <input
                       type="text"
                       value={currentCatatan}
                       onChange={(e) => handleNoteChange(student.id, e.target.value)}
@@ -442,14 +604,14 @@ export default function AbsensiHarianView({
             </div>
 
             <div className="pt-2 flex items-center justify-center gap-3">
-              <button 
+              <button
                 onClick={() => setIsQrModalOpen(true)}
                 className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/30 flex items-center gap-2 hover:opacity-90 transition"
               >
                 <QrCode className="w-4 h-4" /> Buka Scanner QR Sekarang
               </button>
 
-              <button 
+              <button
                 onClick={() => setViewMode('all')}
                 className="bg-darkBg border border-cardBorder text-gray-300 hover:text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"
               >
@@ -460,139 +622,312 @@ export default function AbsensiHarianView({
         )}
       </div>
 
-      {/* MODAL SCANNER QR CODE (HANYA MENAMPILKAN KAMERA) */}
+      {/* ============================================================ */}
+      {/* MODAL SCANNER QR CODE — REAL CAMERA + MANUAL + UPLOAD        */}
+      {/* ============================================================ */}
       <AnimatePresence>
         {isQrModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-cardBg border border-cardBorder rounded-2xl w-full max-w-[320px] sm:max-w-sm overflow-hidden shadow-2xl flex flex-col"
+              className="bg-cardBg border border-cardBorder rounded-2xl w-full max-w-[380px] sm:max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[95vh]"
             >
               {/* Header Modal */}
-              <div className="px-3.5 py-2.5 border-b border-cardBorder flex items-center justify-between bg-darkBg/80">
-                <div className="flex items-center gap-2">
-                  <div className="p-1 bg-purple-500/20 text-purple-300 rounded-md">
-                    <QrCode className="w-3.5 h-3.5" />
+              <div className="px-4 py-3 border-b border-cardBorder flex items-center justify-between bg-darkBg/80 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-purple-500/20 text-purple-300 rounded-lg">
+                    <QrCode className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-xs text-white">Scanner QR Presensi</h3>
-                    <p className="text-[9px] text-gray-400">Pindai QR Siswa</p>
+                    <h3 className="font-bold text-sm text-white">Scanner QR Presensi</h3>
+                    <p className="text-[10px] text-gray-400">Kamera langsung • Manual • Upload gambar</p>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => setIsQrModalOpen(false)} 
-                    className="px-2 py-0.5 rounded-lg bg-darkBg hover:bg-cardBorder border border-cardBorder text-[10px] text-gray-300 hover:text-white font-bold flex items-center gap-1 transition"
-                  >
-                    <ArrowLeft className="w-3 h-3 text-purple-400" /> Kembali
-                  </button>
-                  <button 
-                    onClick={() => setIsQrModalOpen(false)} 
-                    className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-cardBorder transition"
-                    title="Tutup Modal"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+
+                <button
+                  onClick={() => setIsQrModalOpen(false)}
+                  className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-cardBorder transition"
+                  title="Tutup Modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Modal Body: MINI CAMERA VIEWPORT */}
-              <div className="p-3 space-y-2.5">
-                <div className="relative h-36 sm:h-40 w-full max-w-[260px] mx-auto bg-black rounded-lg border-2 border-primaryPurple/60 overflow-hidden flex items-center justify-center shadow-lg">
-                  
-                  {/* Animated Laser Line */}
-                  <motion.div 
-                    animate={{ y: [-55, 55, -55] }}
-                    transition={{ duration: 2.0, repeat: Infinity, ease: 'easeInOut' }}
-                    className={`absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent shadow-[0_0_12px_#8B5CF6] z-10 ${isScanningAnim ? 'via-emerald-400 shadow-[0_0_16px_#10B981]' : ''}`}
-                  />
+              {/* Scanner Tab Switcher */}
+              <div className="flex border-b border-cardBorder shrink-0">
+                {[
+                  { key: 'camera', icon: Camera, label: 'Kamera' },
+                  { key: 'manual', icon: Keyboard, label: 'Manual' },
+                  { key: 'upload', icon: ImagePlus, label: 'Upload' },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setScannerTab(tab.key)}
+                    className={`flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all border-b-2 ${scannerTab === tab.key
+                        ? 'text-purple-300 border-purple-500 bg-purple-500/5'
+                        : 'text-gray-400 border-transparent hover:text-white hover:bg-cardBorder/30'
+                      }`}
+                  >
+                    <tab.icon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Camera Corner Overlay Brackets */}
-                  <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-primaryPurple rounded-tl z-10"></div>
-                  <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-primaryPurple rounded-tr z-10"></div>
-                  <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-primaryPurple rounded-bl z-10"></div>
-                  <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-primaryPurple rounded-br z-10"></div>
+              {/* Modal Body */}
+              <div className="p-4 space-y-3 overflow-y-auto flex-1">
 
-                  {/* Center Camera Status */}
-                  <div className="text-center p-2 z-10 space-y-1.5">
-                    <Scan className={`w-8 h-8 mx-auto ${isScanningAnim ? 'text-emerald-400 animate-spin' : 'text-primaryPurple animate-pulse'}`} />
-                    <div>
-                      <span className="text-[11px] text-white font-bold block leading-tight">
-                        {isScanningAnim ? 'Memproses...' : 'Kamera Active'}
-                      </span>
-                      <p className="text-[9px] text-purple-300 mt-0.5">
-                        Arahkan Kode QR Ke Kamera
-                      </p>
-                    </div>
-                  </div>
+                {/* ========== TAB: CAMERA ========== */}
+                {scannerTab === 'camera' && (
+                  <div className="space-y-3">
+                    {/* Camera Viewport */}
+                    <div className="relative w-full aspect-square max-h-[280px] bg-black rounded-xl border-2 border-purple-500/40 overflow-hidden">
+                      {/* QR Scanner container — html5-qrcode renders into this */}
+                      <div
+                        id="qr-reader-container"
+                        ref={scannerContainerRef}
+                        className="w-full h-full"
+                        style={{ position: 'relative' }}
+                      />
 
-                  {/* Floating Overlay Banner when Scanned */}
-                  <AnimatePresence>
-                    {lastScanned && (
-                      <motion.div 
-                        initial={{ y: 30, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 30, opacity: 0 }}
-                        className="absolute bottom-2 inset-x-2 z-20 bg-emerald-600/90 backdrop-blur-md text-white p-2 rounded-md shadow-lg flex items-center justify-between border border-emerald-400/40"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
-                          <div>
-                            <h5 className="font-bold text-[10px] leading-tight">{lastScanned.nama}</h5>
-                            <p className="text-[8px] text-emerald-100">NISN: {lastScanned.nisn} • HADIR</p>
+                      {/* Corner brackets overlay */}
+                      <div className="absolute inset-0 pointer-events-none z-10">
+                        <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-purple-400 rounded-tl-sm"></div>
+                        <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-purple-400 rounded-tr-sm"></div>
+                        <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-purple-400 rounded-bl-sm"></div>
+                        <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-purple-400 rounded-br-sm"></div>
+                      </div>
+
+                      {/* Scanning animation laser line */}
+                      {isCameraActive && (
+                        <motion.div
+                          animate={{ y: ['10%', '90%', '10%'] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                          className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent shadow-[0_0_12px_#8B5CF6] z-10 pointer-events-none"
+                        />
+                      )}
+
+                      {/* Processing overlay */}
+                      {isScanningAnim && (
+                        <div className="absolute inset-0 bg-emerald-500/20 z-20 flex items-center justify-center pointer-events-none">
+                          <div className="bg-emerald-600/90 backdrop-blur px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+                            <Zap className="w-4 h-4 text-white animate-pulse" />
+                            <span className="text-xs font-bold text-white">QR Terbaca!</span>
                           </div>
                         </div>
-                        <span className="text-[8px] font-mono bg-black/30 px-1 py-0.5 rounded">
-                          {lastScanned.time}
-                        </span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      )}
 
-                {/* PANEL HASIL PINDAIAN TERAKHIR */}
-                <div className="bg-darkBg border border-cardBorder rounded-lg p-2.5 space-y-1">
+                      {/* Camera Error State */}
+                      {cameraError && !isCameraActive && (
+                        <div className="absolute inset-0 bg-darkBg flex flex-col items-center justify-center text-center p-4 z-20">
+                          <CameraOff className="w-10 h-10 text-red-400 mb-3" />
+                          <p className="text-xs text-red-300 font-semibold mb-1">Kamera Tidak Tersedia</p>
+                          <p className="text-[10px] text-gray-400 leading-relaxed max-w-[240px]">
+                            {cameraError}
+                          </p>
+                          <button
+                            onClick={startCamera}
+                            className="mt-3 px-4 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold flex items-center gap-1.5 hover:bg-purple-500 transition"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Coba Lagi
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Loading State */}
+                      {!isCameraActive && !cameraError && (
+                        <div className="absolute inset-0 bg-darkBg flex flex-col items-center justify-center z-20">
+                          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-3"></div>
+                          <p className="text-xs text-gray-400 font-semibold">Memuat kamera...</p>
+                        </div>
+                      )}
+
+                      {/* Scanned Result Banner */}
+                      <AnimatePresence>
+                        {lastScanned && (
+                          <motion.div
+                            initial={{ y: 30, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 30, opacity: 0 }}
+                            className="absolute bottom-2 inset-x-2 z-30 bg-emerald-600/95 backdrop-blur-md text-white p-2.5 rounded-lg shadow-xl flex items-center justify-between border border-emerald-400/40"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                              <div>
+                                <h5 className="font-bold text-[11px] leading-tight">{lastScanned.nama}</h5>
+                                <p className="text-[9px] text-emerald-100">NISN: {lastScanned.nisn} • HADIR</p>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-mono bg-black/30 px-1.5 py-0.5 rounded">
+                              {lastScanned.time}
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Camera Control Buttons */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={toggleCameraFacing}
+                        className="flex-1 bg-darkBg border border-cardBorder text-gray-300 hover:text-white py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition hover:border-purple-500/40"
+                        title="Ganti Kamera Depan/Belakang"
+                      >
+                        <SwitchCamera className="w-3.5 h-3.5" />
+                        {facingMode === 'environment' ? 'Kamera Depan' : 'Kamera Belakang'}
+                      </button>
+
+                      <button
+                        onClick={isCameraActive ? stopCamera : startCamera}
+                        className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition border ${isCameraActive
+                            ? 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20'
+                            : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                          }`}
+                      >
+                        {isCameraActive ? <CameraOff className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
+                        {isCameraActive ? 'Matikan Kamera' : 'Nyalakan Kamera'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== TAB: MANUAL INPUT ========== */}
+                {scannerTab === 'manual' && (
+                  <div className="space-y-3">
+                    <div className="bg-darkBg border border-cardBorder rounded-xl p-4 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-center">
+                        <Keyboard className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-white">Input Manual NISN / ID Siswa</h4>
+                        <p className="text-[10px] text-gray-400 mt-1">Ketik NISN atau ID siswa lalu tekan Enter</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleManualNisnSubmit} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={manualNisn}
+                        onChange={(e) => setManualNisn(e.target.value)}
+                        placeholder="Masukkan NISN / ID siswa..."
+                        className="flex-1 bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500 transition"
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow hover:opacity-90 transition flex items-center gap-1.5"
+                      >
+                        <Scan className="w-3.5 h-3.5" /> Scan
+                      </button>
+                    </form>
+
+                    {/* Quick Sample NISN buttons */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-gray-500 font-semibold">Contoh NISN Terdaftar:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {students.slice(0, 5).map(s => (
+                          <button
+                            key={s.id}
+                            onClick={() => processQrScanByCode(s.nisn)}
+                            className="bg-darkBg border border-cardBorder text-gray-300 hover:text-white hover:border-purple-500/40 px-2.5 py-1 rounded-lg text-[10px] font-mono transition"
+                          >
+                            {s.nisn}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ========== TAB: UPLOAD IMAGE ========== */}
+                {scannerTab === 'upload' && (
+                  <div className="space-y-3">
+                    <div className="bg-darkBg border-2 border-dashed border-cardBorder rounded-xl p-6 text-center space-y-3 hover:border-purple-500/40 transition cursor-pointer relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="w-14 h-14 mx-auto bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-center">
+                        <ImagePlus className="w-7 h-7 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-white">Upload Gambar QR Code</h4>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                          Pilih file gambar berisi QR Code / Barcode siswa.<br />
+                          Format: JPG, PNG, WEBP
+                        </p>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-lg text-[11px] text-purple-300 font-semibold">
+                        <Upload className="w-3 h-3" /> Pilih File Gambar
+                      </div>
+                    </div>
+                    {/* Hidden container for file scan */}
+                    <div id="qr-file-upload-container" className="hidden"></div>
+                  </div>
+                )}
+
+                {/* ========== PANEL HASIL PINDAIAN TERAKHIR ========== */}
+                <div className="bg-darkBg border border-cardBorder rounded-xl p-3 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-gray-300 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Pindaian Terakhir:
+                    <span className="text-[11px] font-bold text-gray-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Pindaian Terakhir
                     </span>
                     {lastScanned && (
-                      <span className="text-[8px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded font-mono border border-emerald-500/30">
+                      <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono border border-emerald-500/30">
                         {lastScanned.time} WIB
                       </span>
                     )}
                   </div>
 
                   {lastScanned ? (
-                    <motion.div 
+                    <motion.div
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="bg-emerald-500/10 border border-emerald-500/30 p-1.5 rounded flex items-center justify-between"
+                      className="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-lg flex items-center justify-between"
                     >
                       <div>
-                        <h4 className="font-bold text-[11px] text-white leading-tight">{lastScanned.nama}</h4>
-                        <p className="text-[9px] text-gray-300">NISN: {lastScanned.nisn} • Kelas: {lastScanned.kelas}</p>
+                        <h4 className="font-bold text-xs text-white">{lastScanned.nama}</h4>
+                        <p className="text-[10px] text-gray-300">NISN: {lastScanned.nisn} • Kelas: {lastScanned.kelas}</p>
                       </div>
-                      <span className="text-[9px] font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded shadow">
+                      <span className="text-[10px] font-extrabold bg-emerald-500 text-white px-2.5 py-1 rounded-lg shadow">
                         HADIR
                       </span>
                     </motion.div>
                   ) : (
-                    <div className="text-center py-1.5 text-xs text-gray-400">
-                      <p className="font-semibold text-[11px] text-gray-300">Belum Ada Siswa Dipindai</p>
-                      <p className="text-[9px] text-gray-500">Tunjukkan QR siswa ke kamera di atas.</p>
+                    <div className="text-center py-2 text-xs text-gray-400">
+                      <p className="font-semibold text-xs text-gray-300">Belum Ada Siswa Dipindai</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Gunakan kamera, input manual, atau upload gambar QR.</p>
                     </div>
                   )}
                 </div>
 
-                <button 
+                {/* Session Scan History (compact) */}
+                {scannedSessionList.length > 0 && (
+                  <div className="bg-darkBg border border-cardBorder rounded-xl p-3 space-y-1.5">
+                    <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Riwayat Scan Sesi Ini ({scannedSessionList.length})
+                    </span>
+                    <div className="max-h-24 overflow-y-auto space-y-1">
+                      {scannedSessionList.slice(0, 10).map((s, i) => (
+                        <div key={s.id + '-' + i} className="flex items-center justify-between bg-cardBg/50 px-2 py-1 rounded text-[10px]">
+                          <span className="text-white font-semibold truncate">{s.nama}</span>
+                          <span className="text-gray-400 font-mono shrink-0 ml-2">{s.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Close Button */}
+                <button
                   onClick={() => setIsQrModalOpen(false)}
-                  className="w-full bg-gradient-to-r from-primaryPurple to-accentBlue py-2 rounded-lg text-xs font-bold text-white shadow flex items-center justify-center gap-1 hover:opacity-90 transition"
+                  className="w-full bg-gradient-to-r from-primaryPurple to-accentBlue py-2.5 rounded-xl text-xs font-bold text-white shadow flex items-center justify-center gap-1.5 hover:opacity-90 transition"
                 >
-                  <ArrowLeft className="w-3 h-3" /> Kembali ke Presensi
+                  <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Presensi
                 </button>
               </div>
             </motion.div>
