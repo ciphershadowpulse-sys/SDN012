@@ -8,10 +8,14 @@ import {
   Keyboard, ImagePlus, Zap
 } from 'lucide-react';
 import { USER_QR_SAMPLES } from '../data/initialData';
-import { saveDailyAttendanceSupabase, saveAttendanceRecapSupabase } from '../lib/supabase';
+import { 
+  isSupabaseConfigured,
+  fetchDailyAttendanceSupabase, 
+  saveDailyAttendanceSupabase, 
+  fetchAttendanceRecapSupabase,
+  saveAttendanceRecapSupabase 
+} from '../lib/supabase';
 import { Html5Qrcode } from 'html5-qrcode';
-
-
 
 export default function AbsensiHarianView({
   students,
@@ -53,20 +57,40 @@ export default function AbsensiHarianView({
   const classStudents = students.filter(s => s.kelas === selectedClass);
 
   useEffect(() => {
-    // Preserve existing records, initialize missing ones
-    setAttendanceRecords(prev => {
-      const initialMap = { ...prev };
-      classStudents.forEach(s => {
-        if (!initialMap[s.id]) {
-          initialMap[s.id] = {
-            status: 'Hadir',
-            catatan: ''
-          };
-        }
+    let isMounted = true;
+
+    async function loadDailyAttendance() {
+      const existing = await fetchDailyAttendanceSupabase(selectedClass, selectedDate);
+      if (!isMounted) return;
+
+      setAttendanceRecords(prev => {
+        const initialMap = { ...prev };
+        classStudents.forEach(s => {
+          if (existing[s.id]) {
+            initialMap[s.id] = existing[s.id];
+          } else if (!initialMap[s.id]) {
+            initialMap[s.id] = {
+              status: 'Hadir',
+              catatan: ''
+            };
+          }
+        });
+        return initialMap;
       });
-      return initialMap;
-    });
-  }, [selectedClass, students]);
+
+      // Update scanned IDs from loaded attendance that has status Hadir
+      const scannedIds = Object.keys(existing).filter(id => existing[id].status === 'Hadir');
+      if (scannedIds.length > 0) {
+        setScannedStudentIds(prev => Array.from(new Set([...prev, ...scannedIds])));
+      }
+    }
+
+    loadDailyAttendance();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedClass, selectedDate, students]);
 
   // Filter students to display in the main attendance table
   const displayedStudents = viewMode === 'only_scanned'
@@ -97,41 +121,53 @@ export default function AbsensiHarianView({
 
   // Action: Save Attendance
   const handleSaveAttendance = async () => {
-    const newRecap = [...attendanceRecap];
-    classStudents.forEach(s => {
-      const rec = attendanceRecords[s.id];
-      if (!rec) return;
+    const res = await saveDailyAttendanceSupabase(attendanceRecords, classStudents, selectedClass, selectedDate);
 
-      const recapIndex = newRecap.findIndex(r => r.studentId === s.id);
-      if (recapIndex >= 0) {
-        const item = { ...newRecap[recapIndex] };
-        if (rec.status === 'Hadir') item.hadir += 1;
-        if (rec.status === 'Sakit') item.sakit += 1;
-        if (rec.status === 'Izin') item.izin += 1;
-        if (rec.status === 'Alpa') item.alpa += 1;
+    if (!res.success) {
+      alert(`Gagal menyimpan presensi ke Supabase: ${res.error}`);
+      return;
+    }
 
-        const total = item.hadir + item.sakit + item.izin + item.alpa;
-        item.persentase = total > 0 ? Math.round((item.hadir / total) * 1000) / 10 : 100;
-        newRecap[recapIndex] = item;
-      } else {
-        const item = {
-          studentId: s.id,
-          nama: s.nama,
-          kelas: s.kelas,
-          hadir: rec.status === 'Hadir' ? 1 : 0,
-          sakit: rec.status === 'Sakit' ? 1 : 0,
-          izin: rec.status === 'Izin' ? 1 : 0,
-          alpa: rec.status === 'Alpa' ? 1 : 0,
-          persentase: rec.status === 'Hadir' ? 100 : 0
-        };
-        newRecap.push(item);
-      }
-    });
+    // Refresh attendance recap from Supabase if configured
+    if (isSupabaseConfigured) {
+      const updatedRecap = await fetchAttendanceRecapSupabase(attendanceRecap);
+      setAttendanceRecap(updatedRecap);
+    } else {
+      const newRecap = [...attendanceRecap];
+      classStudents.forEach(s => {
+        const rec = attendanceRecords[s.id];
+        if (!rec) return;
 
-    setAttendanceRecap(newRecap);
-    saveDailyAttendanceSupabase(attendanceRecords, selectedClass, selectedDate);
-    saveAttendanceRecapSupabase(newRecap);
-    triggerToast(`Presensi Kelas ${selectedClass} Tanggal ${selectedDate} Berhasil Disimpan!`);
+        const recapIndex = newRecap.findIndex(r => r.studentId === s.id);
+        if (recapIndex >= 0) {
+          const item = { ...newRecap[recapIndex] };
+          if (rec.status === 'Hadir') item.hadir += 1;
+          if (rec.status === 'Sakit') item.sakit += 1;
+          if (rec.status === 'Izin') item.izin += 1;
+          if (rec.status === 'Alpa') item.alpa += 1;
+
+          const total = item.hadir + item.sakit + item.izin + item.alpa;
+          item.persentase = total > 0 ? Math.round((item.hadir / total) * 1000) / 10 : 100;
+          newRecap[recapIndex] = item;
+        } else {
+          const item = {
+            studentId: s.id,
+            nama: s.nama,
+            kelas: s.kelas,
+            hadir: rec.status === 'Hadir' ? 1 : 0,
+            sakit: rec.status === 'Sakit' ? 1 : 0,
+            izin: rec.status === 'Izin' ? 1 : 0,
+            alpa: rec.status === 'Alpa' ? 1 : 0,
+            persentase: rec.status === 'Hadir' ? 100 : 0
+          };
+          newRecap.push(item);
+        }
+      });
+      setAttendanceRecap(newRecap);
+      saveAttendanceRecapSupabase(newRecap);
+    }
+
+    triggerToast(`Presensi Kelas ${selectedClass} Tanggal ${selectedDate} Berhasil Disimpan ke Supabase!`);
   };
 
   const triggerToast = (msg) => {

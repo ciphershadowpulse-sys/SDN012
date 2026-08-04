@@ -1,31 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, User, Building, Sparkles, Save, CheckCircle2, 
   ShieldCheck, BellRing, Database, Lock, Key, Globe
 } from 'lucide-react';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { 
+  isSupabaseConfigured, 
+  fetchSchoolSettingsSupabase, 
+  saveSchoolSettingsSupabase,
+  saveUserAccountSupabase
+} from '../lib/supabase';
 
-export default function PengaturanView() {
-  const [profile, setProfile] = useState({
-    nama: 'Pak Budi, S.Pd',
-    nip: '19850412 201001 1 008',
+export default function PengaturanView({ currentUser, setCurrentUser }) {
+  const defaultProfile = {
+    nama: currentUser?.nama || 'Pak Budi, S.Pd',
+    nip: currentUser?.nip || '19850412 201001 1 008',
     mapel: 'Matematika Peminatan & Fisika',
-    email: 'budi.matematika@sekolah.sch.id',
-    phone: '081234567890',
+    email: currentUser?.email || 'budi.matematika@sekolah.sch.id',
+    phone: currentUser?.phone || '081234567890',
     namaSekolah: 'SMA Negeri 1 Jakarta',
     tahunAjaran: '2026/2027 (Semester Ganjil)',
     kkmDefault: 75,
     kurikulum: 'Kurikulum Merdeka',
     aiModel: 'Gemini 3.6 Pro (Fast & Accurate)',
     autoWaAlert: true
-  });
+  };
 
+  const [profile, setProfile] = useState(defaultProfile);
   const [toastMsg, setToastMsg] = useState(null);
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    setToastMsg('Pengaturan Akun & Identitas Sekolah Berhasil Disimpan!');
+  useEffect(() => {
+    if (isSupabaseConfigured && currentUser?.username) {
+      fetchSchoolSettingsSupabase(currentUser.username, defaultProfile).then(sett => {
+        setProfile(prev => ({
+          ...prev,
+          ...sett
+        }));
+      });
+    }
+  }, [currentUser]);
+
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSupabaseConfigured && currentUser?.username) {
+      await saveSchoolSettingsSupabase(currentUser.username, profile);
+      await saveUserAccountSupabase({
+        id: currentUser?.id || `USR-${Date.now()}`,
+        username: currentUser?.username || 'user',
+        password: currentUser?.password || '123456',
+        nama: profile.nama,
+        nip: profile.nip,
+        kelasBinaan: currentUser?.kelasBinaan || 'XII MIPA 1',
+        role: currentUser?.role || 'Wali Kelas',
+        email: profile.email,
+        phone: profile.phone
+      });
+      if (setCurrentUser && currentUser) {
+        const updatedUser = { ...currentUser, nama: profile.nama, nip: profile.nip, email: profile.email, phone: profile.phone };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('digital_guru_session', JSON.stringify(updatedUser));
+      }
+    }
+    setToastMsg('Pengaturan Akun & Identitas Sekolah Berhasil Disimpan ke Supabase!');
     setTimeout(() => setToastMsg(null), 3500);
   };
 

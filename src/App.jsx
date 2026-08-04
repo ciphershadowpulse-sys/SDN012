@@ -240,7 +240,7 @@ export default function App() {
             )}
 
             {activeTab === 'settings' && (
-              <PengaturanView key="settings" />
+              <PengaturanView key="settings" currentUser={currentUser} setCurrentUser={setCurrentUser} />
             )}
           </AnimatePresence>
         </main>

@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Sparkles, Download, Search, Filter, Plus, 
   Eye, BookOpen, Check, X, Copy, FileCode, CheckCircle2
 } from 'lucide-react';
+import { 
+  isSupabaseConfigured, 
+  fetchLessonPlansSupabase, 
+  saveLessonPlanSupabase 
+} from '../lib/supabase';
 
 const initialDocuments = [
   {
@@ -67,6 +72,12 @@ export default function BankModulRppView({ classes }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKurikulum, setSelectedKurikulum] = useState('Semua Kurikulum');
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
+
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchLessonPlansSupabase(initialDocuments).then(docs => setDocuments(docs));
+    }
+  }, []);
   
   // Modals
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -87,7 +98,7 @@ export default function BankModulRppView({ classes }) {
   // Filtered Docs
   const filteredDocs = documents.filter(doc => {
     const matchesSearch = doc.judul.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          doc.ringkasan.toLowerCase().includes(searchTerm.toLowerCase());
+                          (doc.ringkasan && doc.ringkasan.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesKurikulum = selectedKurikulum === 'Semua Kurikulum' || doc.kurikulum === selectedKurikulum;
     const matchesClass = selectedClass === 'Semua Kelas' || doc.kelas === selectedClass;
     return matchesSearch && matchesKurikulum && matchesClass;
@@ -108,9 +119,9 @@ export default function BankModulRppView({ classes }) {
     }
 
     setIsGenerating(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       const newDoc = {
-        id: `DOC-00${documents.length + 1}`,
+        id: `RPP-${Date.now()}`,
         judul: `RPP Modul Ajar AI — ${aiForm.topik}`,
         kurikulum: aiForm.kurikulum,
         kelas: aiForm.kelas,
@@ -128,13 +139,14 @@ export default function BankModulRppView({ classes }) {
         ]
       };
 
+      saveLessonPlanSupabase(newDoc);
       setDocuments([newDoc, ...documents]);
       setIsGenerating(false);
       setIsAiModalOpen(false);
       setActiveDoc(newDoc);
       setIsPreviewOpen(true);
 
-      showToast('Draf RPP Baru Berhasil Di-Generate oleh AI!');
+      showToast('Draf RPP Baru Berhasil Di-Generate oleh AI dan Disimpan ke Supabase!');
     }, 1500);
   };
 

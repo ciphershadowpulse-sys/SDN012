@@ -28,7 +28,6 @@
 -- DROP TABLE CASCADE otomatis menghapus trigger & constraint
 -- =========================================================
 
--- Drop tables (CASCADE otomatis hapus trigger, index, constraint)
 DROP TABLE IF EXISTS public.school_settings CASCADE;
 DROP TABLE IF EXISTS public.class_analytics CASCADE;
 DROP TABLE IF EXISTS public.lesson_plans CASCADE;
@@ -39,9 +38,10 @@ DROP TABLE IF EXISTS public.daily_attendances CASCADE;
 DROP TABLE IF EXISTS public.students CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
 
--- Drop functions (setelah tabel dihapus, trigger otomatis hilang)
+-- Drop functions
 DROP FUNCTION IF EXISTS public.fn_update_attendance_recap() CASCADE;
 DROP FUNCTION IF EXISTS public.fn_auto_calc_grades() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_sync_student_to_recap() CASCADE;
 
 
 -- =========================================================
@@ -66,6 +66,7 @@ CREATE TABLE public.profiles (
 CREATE TABLE public.students (
   id TEXT PRIMARY KEY,
   nisn TEXT UNIQUE NOT NULL,
+  alt_nisn TEXT,
   nama TEXT NOT NULL,
   kelas TEXT NOT NULL,
   gender TEXT NOT NULL,
@@ -75,6 +76,7 @@ CREATE TABLE public.students (
   phone_ortu TEXT,
   alamat TEXT,
   catatan TEXT,
+  qr_image TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -202,7 +204,34 @@ CREATE TABLE public.school_settings (
 -- LANGKAH 3: BUAT TRIGGER FUNCTIONS
 -- =========================================================
 
--- TRIGGER FUNCTION: Auto-update rekap absensi
+-- TRIGGER FUNCTION 1: Inisialisasi & sinkronisasi siswa ke attendance_recap
+CREATE OR REPLACE FUNCTION public.fn_sync_student_to_recap()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO public.attendance_recap (student_id, nama, kelas, hadir, sakit, izin, alpa, persentase)
+  VALUES (NEW.id, NEW.nama, NEW.kelas, 0, 0, 0, 0, 100.00)
+  ON CONFLICT (student_id) DO UPDATE SET
+    nama = EXCLUDED.nama,
+    kelas = EXCLUDED.kelas;
+
+  -- Update nama/kelas di tabel grades jika data siswa diperbarui
+  UPDATE public.grades
+  SET nama = NEW.nama, kelas = NEW.kelas
+  WHERE student_id = NEW.id;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_sync_student_to_recap
+AFTER INSERT OR UPDATE ON public.students
+FOR EACH ROW EXECUTE FUNCTION public.fn_sync_student_to_recap();
+
+
+-- TRIGGER FUNCTION 2: Auto-update rekap absensi saat ada presensi harian
 CREATE OR REPLACE FUNCTION public.fn_update_attendance_recap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -268,7 +297,7 @@ AFTER INSERT OR UPDATE OR DELETE ON public.daily_attendances
 FOR EACH ROW EXECUTE FUNCTION public.fn_update_attendance_recap();
 
 
--- TRIGGER FUNCTION: Auto-calc nilai akhir & predikat
+-- TRIGGER FUNCTION 3: Auto-calc nilai akhir & predikat
 CREATE OR REPLACE FUNCTION public.fn_auto_calc_grades()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -288,8 +317,8 @@ BEGIN
   , 2);
 
   IF v_nilai >= 88 THEN v_pred := 'A';
-  ELSIF v_nilai >= 75 THEN v_pred := 'B';
-  ELSIF v_nilai >= 60 THEN v_pred := 'C';
+  ELSIF v_nilai >= 80 THEN v_pred := 'B';
+  ELSIF v_nilai >= 70 THEN v_pred := 'C';
   ELSE v_pred := 'D';
   END IF;
 
@@ -322,33 +351,19 @@ INSERT INTO public.profiles (id, username, password, nama, nip, kelas_binaan, em
   ('USR-004', 'walikelas4', '123456', 'Ibu Dewi Lestari, S.Pd', '19900311 201503 2 009', 'X MIPA 1', 'dewi.lestari@sekolah.sch.id', '081234567893')
 ON CONFLICT (username) DO NOTHING;
 
--- 10 Siswa
-INSERT INTO public.students (id, nisn, nama, kelas, gender, email, nama_ortu, phone_ortu, alamat, catatan) VALUES
-  ('STU-001', '0012345688', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Laki-Laki', 'rizky.pratama@siswa.belajar.id', 'Bpk. Hendra Pratama', '081234567801', 'Jl. Merdeka No. 12, Jakarta', 'Aktif dalam diskusi matematika, ketua OSIS.'),
-  ('STU-002', '3184861266', 'Anisa Rahmawati', 'XII MIPA 1', 'Perempuan', 'anisa.rahma@siswa.belajar.id', 'Ibu Kurniawati', '081234567802', 'Jl. Melati No. 45, Jakarta', 'Sangat teliti dalam pengerjaan tugas matematika.'),
-  ('STU-003', '0051234503', 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Laki-Laki', 'bagus.setyo@siswa.belajar.id', 'Bpk. Tri Nugroho', '081234567803', 'Jl. Mawar Gg. 3 No. 8, Jakarta', 'Perlu bimbingan ekstra pada materi kalkulus.'),
-  ('STU-004', '0051234504', 'Citra Dewi Lestari', 'XII MIPA 1', 'Perempuan', 'citra.dewi@siswa.belajar.id', 'Ibu Rahayu Lestari', '081234567804', 'Jl. Sudirman No. 88, Jakarta', 'Juara 2 Olimpiade Fisika tingkat Kota.'),
-  ('STU-005', '0051234505', 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Laki-Laki', 'daffa.farhan@siswa.belajar.id', 'Bpk. Ahmad Farhan', '081234567805', 'Jl. Gatot Subroto No. 19, Jakarta', 'Disiplin dan selalu hadir tepat waktu.'),
-  ('STU-006', '0051234506', 'Eka Putri Maharani', 'XII MIPA 2', 'Perempuan', 'eka.putri@siswa.belajar.id', 'Ibu Maharani', '081234567806', 'Jl. Anggrek No. 34, Jakarta', 'Aktif dalam kegiatan ekstrakurikuler PMR.'),
-  ('STU-007', '0051234507', 'Fajar Nugraha', 'XII MIPA 2', 'Laki-Laki', 'fajar.nugraha@siswa.belajar.id', 'Bpk. Herman Nugraha', '081234567807', 'Jl. Flamboyan No. 12, Jakarta', 'Sering alpa tanpa keterangan pada minggu lalu.'),
-  ('STU-008', '0051234508', 'Gita Gutawa Putri', 'XI MIPA 1', 'Perempuan', 'gita.gutawa@siswa.belajar.id', 'Bpk. Erwin Gutawa', '081234567808', 'Jl. Cempaka No. 90, Jakarta', 'Bakat tinggi di bidang seni & matematika.'),
-  ('STU-009', '0051234509', 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Laki-Laki', 'hafiz.sina@siswa.belajar.id', 'Bpk. Lukman Sina', '081234567809', 'Jl. Diponegoro No. 23, Jakarta', 'Memiliki logika pemecahan masalah matematika sangat baik.'),
-  ('STU-010', '0051234510', 'Intan Nuraini', 'X MIPA 1', 'Perempuan', 'intan.nuraini@siswa.belajar.id', 'Ibu Nuraini', '081234567810', 'Jl. Veteran No. 56, Jakarta', 'Siswa baru berprestasi lulusan SMPN 1.')
+-- 10 Siswa (Otomatis men-trigger fn_sync_student_to_recap untuk membuat baris awal di attendance_recap)
+INSERT INTO public.students (id, nisn, alt_nisn, nama, kelas, gender, email, nama_ortu, phone_ortu, alamat, catatan, qr_image) VALUES
+  ('STU-001', '0012345688', 'Murid-SDN012-11', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Laki-Laki', 'rizky.pratama@siswa.belajar.id', 'Bpk. Hendra Pratama', '081234567801', 'Jl. Merdeka No. 12, Jakarta', 'Aktif dalam diskusi matematika, ketua OSIS.', '/qr1.png'),
+  ('STU-002', '3184861266', NULL, 'Anisa Rahmawati', 'XII MIPA 1', 'Perempuan', 'anisa.rahma@siswa.belajar.id', 'Ibu Kurniawati', '081234567802', 'Jl. Melati No. 45, Jakarta', 'Sangat teliti dalam pengerjaan tugas matematika.', '/qr2.png'),
+  ('STU-003', '0051234503', NULL, 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Laki-Laki', 'bagus.setyo@siswa.belajar.id', 'Bpk. Tri Nugroho', '081234567803', 'Jl. Mawar Gg. 3 No. 8, Jakarta', 'Perlu bimbingan ekstra pada materi kalkulus.', NULL),
+  ('STU-004', '0051234504', NULL, 'Citra Dewi Lestari', 'XII MIPA 1', 'Perempuan', 'citra.dewi@siswa.belajar.id', 'Ibu Rahayu Lestari', '081234567804', 'Jl. Sudirman No. 88, Jakarta', 'Juara 2 Olimpiade Fisika tingkat Kota.', NULL),
+  ('STU-005', '0051234505', NULL, 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Laki-Laki', 'daffa.farhan@siswa.belajar.id', 'Bpk. Ahmad Farhan', '081234567805', 'Jl. Gatot Subroto No. 19, Jakarta', 'Disiplin dan selalu hadir tepat waktu.', NULL),
+  ('STU-006', '0051234506', NULL, 'Eka Putri Maharani', 'XII MIPA 2', 'Perempuan', 'eka.putri@siswa.belajar.id', 'Ibu Maharani', '081234567806', 'Jl. Anggrek No. 34, Jakarta', 'Aktif dalam kegiatan ekstrakurikuler PMR.', NULL),
+  ('STU-007', '0051234507', NULL, 'Fajar Nugraha', 'XII MIPA 2', 'Laki-Laki', 'fajar.nugraha@siswa.belajar.id', 'Bpk. Herman Nugraha', '081234567807', 'Jl. Flamboyan No. 12, Jakarta', 'Sering alpa tanpa keterangan pada minggu lalu.', NULL),
+  ('STU-008', '0051234508', NULL, 'Gita Gutawa Putri', 'XI MIPA 1', 'Perempuan', 'gita.gutawa@siswa.belajar.id', 'Bpk. Erwin Gutawa', '081234567808', 'Jl. Cempaka No. 90, Jakarta', 'Bakat tinggi di bidang seni & matematika.', NULL),
+  ('STU-009', '0051234509', NULL, 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Laki-Laki', 'hafiz.sina@siswa.belajar.id', 'Bpk. Lukman Sina', '081234567809', 'Jl. Diponegoro No. 23, Jakarta', 'Memiliki logika pemecahan masalah matematika sangat baik.', NULL),
+  ('STU-010', '0051234510', NULL, 'Intan Nuraini', 'X MIPA 1', 'Perempuan', 'intan.nuraini@siswa.belajar.id', 'Ibu Nuraini', '081234567810', 'Jl. Veteran No. 56, Jakarta', 'Siswa baru berprestasi lulusan SMPN 1.', NULL)
 ON CONFLICT (id) DO NOTHING;
-
--- Rekap Absensi (10 Siswa)
-INSERT INTO public.attendance_recap (student_id, nama, kelas, hadir, sakit, izin, alpa, persentase) VALUES
-  ('STU-001', 'Ahmad Rizky Pratama', 'XII MIPA 1', 38, 1, 1, 0, 95.00),
-  ('STU-002', 'Anisa Rahmawati', 'XII MIPA 1', 40, 0, 0, 0, 100.00),
-  ('STU-003', 'Bagus Setyo Nugroho', 'XII MIPA 1', 35, 2, 2, 1, 87.50),
-  ('STU-004', 'Citra Dewi Lestari', 'XII MIPA 1', 39, 1, 0, 0, 97.50),
-  ('STU-005', 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 40, 0, 0, 0, 100.00),
-  ('STU-006', 'Eka Putri Maharani', 'XII MIPA 2', 37, 2, 1, 0, 92.50),
-  ('STU-007', 'Fajar Nugraha', 'XII MIPA 2', 30, 3, 2, 5, 75.00),
-  ('STU-008', 'Gita Gutawa Putri', 'XI MIPA 1', 39, 1, 0, 0, 97.50),
-  ('STU-009', 'Hafiz Ibnu Sina', 'XI MIPA 1', 38, 2, 0, 0, 95.00),
-  ('STU-010', 'Intan Nuraini', 'X MIPA 1', 40, 0, 0, 0, 100.00)
-ON CONFLICT (student_id) DO NOTHING;
 
 -- Penilaian / Grades (10 Siswa — trigger auto-calc nilai_akhir)
 INSERT INTO public.grades (student_id, nama, kelas, mapel, tugas1, tugas2, uh, uts, uas, catatan_ai) VALUES
@@ -436,10 +451,6 @@ ALTER TABLE public.school_settings ENABLE ROW LEVEL SECURITY;
 
 -- =========================================================
 -- LANGKAH 6: BUAT RLS POLICIES UNTUK ANON & AUTHENTICATED
--- Supabase menggunakan role anon (untuk API tanpa login)
--- dan authenticated (untuk API dengan login Supabase Auth).
--- Aplikasi ini menggunakan anon key, jadi kita perlu
--- memberikan akses penuh ke role anon.
 -- =========================================================
 
 -- PROFILES
@@ -447,95 +458,94 @@ DROP POLICY IF EXISTS "Allow anon select profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow anon insert profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow anon update profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow anon delete profiles" ON public.profiles;
-CREATE POLICY "Allow anon select profiles" ON public.profiles FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert profiles" ON public.profiles FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update profiles" ON public.profiles FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete profiles" ON public.profiles FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select profiles" ON public.profiles FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert profiles" ON public.profiles FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update profiles" ON public.profiles FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete profiles" ON public.profiles FOR DELETE TO anon, authenticated USING (true);
 
 -- STUDENTS
 DROP POLICY IF EXISTS "Allow anon select students" ON public.students;
 DROP POLICY IF EXISTS "Allow anon insert students" ON public.students;
 DROP POLICY IF EXISTS "Allow anon update students" ON public.students;
 DROP POLICY IF EXISTS "Allow anon delete students" ON public.students;
-CREATE POLICY "Allow anon select students" ON public.students FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert students" ON public.students FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update students" ON public.students FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete students" ON public.students FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select students" ON public.students FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert students" ON public.students FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update students" ON public.students FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete students" ON public.students FOR DELETE TO anon, authenticated USING (true);
 
 -- DAILY_ATTENDANCES
 DROP POLICY IF EXISTS "Allow anon select daily_attendances" ON public.daily_attendances;
 DROP POLICY IF EXISTS "Allow anon insert daily_attendances" ON public.daily_attendances;
 DROP POLICY IF EXISTS "Allow anon update daily_attendances" ON public.daily_attendances;
 DROP POLICY IF EXISTS "Allow anon delete daily_attendances" ON public.daily_attendances;
-CREATE POLICY "Allow anon select daily_attendances" ON public.daily_attendances FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert daily_attendances" ON public.daily_attendances FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update daily_attendances" ON public.daily_attendances FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete daily_attendances" ON public.daily_attendances FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select daily_attendances" ON public.daily_attendances FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert daily_attendances" ON public.daily_attendances FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update daily_attendances" ON public.daily_attendances FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete daily_attendances" ON public.daily_attendances FOR DELETE TO anon, authenticated USING (true);
 
 -- ATTENDANCE_RECAP
 DROP POLICY IF EXISTS "Allow anon select attendance_recap" ON public.attendance_recap;
 DROP POLICY IF EXISTS "Allow anon insert attendance_recap" ON public.attendance_recap;
 DROP POLICY IF EXISTS "Allow anon update attendance_recap" ON public.attendance_recap;
 DROP POLICY IF EXISTS "Allow anon delete attendance_recap" ON public.attendance_recap;
-CREATE POLICY "Allow anon select attendance_recap" ON public.attendance_recap FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert attendance_recap" ON public.attendance_recap FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update attendance_recap" ON public.attendance_recap FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete attendance_recap" ON public.attendance_recap FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select attendance_recap" ON public.attendance_recap FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert attendance_recap" ON public.attendance_recap FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update attendance_recap" ON public.attendance_recap FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete attendance_recap" ON public.attendance_recap FOR DELETE TO anon, authenticated USING (true);
 
 -- GRADES
 DROP POLICY IF EXISTS "Allow anon select grades" ON public.grades;
 DROP POLICY IF EXISTS "Allow anon insert grades" ON public.grades;
 DROP POLICY IF EXISTS "Allow anon update grades" ON public.grades;
 DROP POLICY IF EXISTS "Allow anon delete grades" ON public.grades;
-CREATE POLICY "Allow anon select grades" ON public.grades FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert grades" ON public.grades FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update grades" ON public.grades FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete grades" ON public.grades FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select grades" ON public.grades FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert grades" ON public.grades FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update grades" ON public.grades FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete grades" ON public.grades FOR DELETE TO anon, authenticated USING (true);
 
 -- TEACHING_SCHEDULES
 DROP POLICY IF EXISTS "Allow anon select teaching_schedules" ON public.teaching_schedules;
 DROP POLICY IF EXISTS "Allow anon insert teaching_schedules" ON public.teaching_schedules;
 DROP POLICY IF EXISTS "Allow anon update teaching_schedules" ON public.teaching_schedules;
 DROP POLICY IF EXISTS "Allow anon delete teaching_schedules" ON public.teaching_schedules;
-CREATE POLICY "Allow anon select teaching_schedules" ON public.teaching_schedules FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert teaching_schedules" ON public.teaching_schedules FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update teaching_schedules" ON public.teaching_schedules FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete teaching_schedules" ON public.teaching_schedules FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select teaching_schedules" ON public.teaching_schedules FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert teaching_schedules" ON public.teaching_schedules FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update teaching_schedules" ON public.teaching_schedules FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete teaching_schedules" ON public.teaching_schedules FOR DELETE TO anon, authenticated USING (true);
 
 -- LESSON_PLANS
 DROP POLICY IF EXISTS "Allow anon select lesson_plans" ON public.lesson_plans;
 DROP POLICY IF EXISTS "Allow anon insert lesson_plans" ON public.lesson_plans;
 DROP POLICY IF EXISTS "Allow anon update lesson_plans" ON public.lesson_plans;
 DROP POLICY IF EXISTS "Allow anon delete lesson_plans" ON public.lesson_plans;
-CREATE POLICY "Allow anon select lesson_plans" ON public.lesson_plans FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert lesson_plans" ON public.lesson_plans FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update lesson_plans" ON public.lesson_plans FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete lesson_plans" ON public.lesson_plans FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select lesson_plans" ON public.lesson_plans FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert lesson_plans" ON public.lesson_plans FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update lesson_plans" ON public.lesson_plans FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete lesson_plans" ON public.lesson_plans FOR DELETE TO anon, authenticated USING (true);
 
 -- CLASS_ANALYTICS
 DROP POLICY IF EXISTS "Allow anon select class_analytics" ON public.class_analytics;
 DROP POLICY IF EXISTS "Allow anon insert class_analytics" ON public.class_analytics;
 DROP POLICY IF EXISTS "Allow anon update class_analytics" ON public.class_analytics;
 DROP POLICY IF EXISTS "Allow anon delete class_analytics" ON public.class_analytics;
-CREATE POLICY "Allow anon select class_analytics" ON public.class_analytics FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert class_analytics" ON public.class_analytics FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update class_analytics" ON public.class_analytics FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete class_analytics" ON public.class_analytics FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select class_analytics" ON public.class_analytics FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert class_analytics" ON public.class_analytics FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update class_analytics" ON public.class_analytics FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete class_analytics" ON public.class_analytics FOR DELETE TO anon, authenticated USING (true);
 
 -- SCHOOL_SETTINGS
 DROP POLICY IF EXISTS "Allow anon select school_settings" ON public.school_settings;
 DROP POLICY IF EXISTS "Allow anon insert school_settings" ON public.school_settings;
 DROP POLICY IF EXISTS "Allow anon update school_settings" ON public.school_settings;
 DROP POLICY IF EXISTS "Allow anon delete school_settings" ON public.school_settings;
-CREATE POLICY "Allow anon select school_settings" ON public.school_settings FOR SELECT TO anon USING (true);
-CREATE POLICY "Allow anon insert school_settings" ON public.school_settings FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Allow anon update school_settings" ON public.school_settings FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Allow anon delete school_settings" ON public.school_settings FOR DELETE TO anon USING (true);
+CREATE POLICY "Allow anon select school_settings" ON public.school_settings FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anon insert school_settings" ON public.school_settings FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Allow anon update school_settings" ON public.school_settings FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon delete school_settings" ON public.school_settings FOR DELETE TO anon, authenticated USING (true);
 
 
 -- =========================================================
 -- LANGKAH 7: GRANT PERMISSIONS KE ROLE anon & authenticated
--- Wajib untuk Supabase agar API bisa akses tabel
 -- =========================================================
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 

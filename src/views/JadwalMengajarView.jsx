@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, Clock, MapPin, Plus, CheckCircle2, 
   AlertCircle, ChevronRight, BookOpen, Filter, X
 } from 'lucide-react';
+import { 
+  isSupabaseConfigured, 
+  fetchTeachingSchedulesSupabase, 
+  saveTeachingScheduleSupabase 
+} from '../lib/supabase';
 
 const initialSchedules = [
   { id: 'SCH-1', hari: 'Senin', jam: '07:30 - 09:00', kelas: 'XII MIPA 1', ruang: 'Lab Mat 1', mapel: 'Matematika Peminatan', topik: 'Turunan Fungsi Trigonometri', status: 'Selesai' },
@@ -21,6 +26,12 @@ export default function JadwalMengajarView({ classes }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchTeachingSchedulesSupabase(initialSchedules).then(schs => setSchedules(schs));
+    }
+  }, []);
+
   // Form State
   const [formSchedule, setFormSchedule] = useState({
     hari: 'Senin',
@@ -37,7 +48,7 @@ export default function JadwalMengajarView({ classes }) {
     ? schedules
     : schedules.filter(s => s.hari === selectedDay);
 
-  const handleAddSchedule = (e) => {
+  const handleAddSchedule = async (e) => {
     e.preventDefault();
     if (!formSchedule.topik.trim()) {
       alert('Mohon isi topik pembelajaran!');
@@ -46,13 +57,14 @@ export default function JadwalMengajarView({ classes }) {
 
     const newSch = {
       ...formSchedule,
-      id: `SCH-${schedules.length + 1}`,
+      id: `SCH-${Date.now()}`,
       status: 'Belum Dimulai'
     };
 
+    saveTeachingScheduleSupabase(newSch);
     setSchedules([...schedules, newSch]);
     setIsModalOpen(false);
-    showToast('Agenda Jadwal Mengajar Baru Berhasil Ditambahkan!');
+    showToast('Agenda Jadwal Mengajar Baru Berhasil Ditambahkan ke Supabase!');
   };
 
   const showToast = (msg) => {

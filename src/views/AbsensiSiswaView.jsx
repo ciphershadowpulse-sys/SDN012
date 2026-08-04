@@ -31,7 +31,7 @@ export default function AbsensiSiswaView({ students, classes, attendanceRecap })
   // Combine student info with attendance recap
   const recapData = students.map(student => {
     const recap = attendanceRecap.find(r => r.studentId === student.id) || {
-      hadir: 40, sakit: 0, izin: 0, alpa: 0, persentase: 100
+      hadir: 0, sakit: 0, izin: 0, alpa: 0, persentase: 100
     };
     return {
       ...student,
@@ -42,18 +42,30 @@ export default function AbsensiSiswaView({ students, classes, attendanceRecap })
   // Filtered recap
   const filteredRecap = recapData.filter(item => {
     const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.nisn.includes(searchTerm);
+                          (item.nisn && item.nisn.includes(searchTerm));
     const matchesClass = selectedClass === 'Semua Kelas' || item.kelas === selectedClass;
     return matchesSearch && matchesClass;
   });
 
   // Metrics
   const totalStudents = filteredRecap.length;
-  const perfectCount = filteredRecap.filter(item => item.persentase >= 100).length;
+  const perfectCount = filteredRecap.filter(item => item.persentase >= 100 && (item.hadir > 0 || (item.sakit === 0 && item.izin === 0 && item.alpa === 0))).length;
   const warningCount = filteredRecap.filter(item => item.alpa > 0 || item.persentase < 85).length;
   const avgAttendance = totalStudents > 0 
     ? (filteredRecap.reduce((acc, curr) => acc + curr.persentase, 0) / totalStudents).toFixed(1)
     : 100;
+
+  // Dynamic Absence Reason Data
+  const totalSakit = filteredRecap.reduce((acc, curr) => acc + (curr.sakit || 0), 0);
+  const totalIzin = filteredRecap.reduce((acc, curr) => acc + (curr.izin || 0), 0);
+  const totalAlpa = filteredRecap.reduce((acc, curr) => acc + (curr.alpa || 0), 0);
+  const totalAbsence = totalSakit + totalIzin + totalAlpa;
+
+  const absenceReasonData = [
+    { name: 'Sakit', value: totalAbsence > 0 ? totalSakit : 0, color: '#3B82F6' },
+    { name: 'Izin', value: totalAbsence > 0 ? totalIzin : 0, color: '#F59E0B' },
+    { name: 'Alpa', value: totalAbsence > 0 ? totalAlpa : 0, color: '#EF4444' },
+  ];
 
   // Handle Export
   const handleExport = () => {
@@ -180,13 +192,13 @@ export default function AbsensiSiswaView({ students, classes, attendanceRecap })
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="bg-darkBg p-2 rounded-lg border border-cardBorder">
-              <span className="text-blue-400 font-bold block">Sakit</span> 45%
+              <span className="text-blue-400 font-bold block">Sakit</span> {totalSakit} Hari
             </div>
             <div className="bg-darkBg p-2 rounded-lg border border-cardBorder">
-              <span className="text-amber-400 font-bold block">Izin</span> 30%
+              <span className="text-amber-400 font-bold block">Izin</span> {totalIzin} Hari
             </div>
             <div className="bg-darkBg p-2 rounded-lg border border-cardBorder">
-              <span className="text-red-400 font-bold block">Alpa</span> 25%
+              <span className="text-red-400 font-bold block">Alpa</span> {totalAlpa} Hari
             </div>
           </div>
         </div>

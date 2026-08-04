@@ -165,24 +165,54 @@ export async function deleteStudentSupabase(studentId) {
 // ==========================================
 // 3. DAILY ATTENDANCES / PRESENSI HARIAN
 // ==========================================
-export async function saveDailyAttendanceSupabase(attendanceRecords, kelas, date) {
+export async function fetchDailyAttendanceSupabase(kelas, date) {
+  if (!isSupabaseConfigured || !supabase) return {};
+  try {
+    const { data, error } = await supabase
+      .from('daily_attendances')
+      .select('*')
+      .eq('kelas', kelas)
+      .eq('date', date);
+
+    if (error || !data) return {};
+
+    const recordsMap = {};
+    data.forEach(item => {
+      recordsMap[item.student_id] = {
+        status: item.status,
+        catatan: item.catatan || ''
+      };
+    });
+    return recordsMap;
+  } catch (err) {
+    console.warn('Gagal memuat presensi harian dari Supabase:', err);
+    return {};
+  }
+}
+
+export async function saveDailyAttendanceSupabase(attendanceRecords, classStudents, kelas, date) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
-    const payload = Object.entries(attendanceRecords).map(([studentId, record]) => ({
-      student_id: studentId,
-      kelas,
-      date,
-      status: record.status,
-      catatan: record.catatan || '',
-      updated_at: new Date().toISOString()
-    }));
+    const validStudentIds = new Set((classStudents || []).map(s => s.id));
+    const payload = Object.entries(attendanceRecords)
+      .filter(([studentId]) => validStudentIds.has(studentId))
+      .map(([studentId, record]) => ({
+        student_id: studentId,
+        kelas,
+        date,
+        status: record.status || 'Hadir',
+        catatan: record.catatan || '',
+        updated_at: new Date().toISOString()
+      }));
 
-    const { error } = await supabase
+    if (payload.length === 0) return { success: true, mode: 'supabase' };
+
+    const { data, error } = await supabase
       .from('daily_attendances')
       .upsert(payload, { onConflict: 'student_id,date' });
 
     if (error) throw error;
-    return { success: true, mode: 'supabase' };
+    return { success: true, data, mode: 'supabase' };
   } catch (err) {
     console.error('Error menyimpan presensi ke Supabase:', err);
     return { success: false, error: err.message };
