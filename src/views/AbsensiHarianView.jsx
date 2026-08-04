@@ -18,6 +18,7 @@ import {
 import { Html5Qrcode } from 'html5-qrcode';
 
 export default function AbsensiHarianView({
+  currentUser,
   students,
   classes,
   attendanceRecap,
@@ -60,7 +61,7 @@ export default function AbsensiHarianView({
     let isMounted = true;
 
     async function loadDailyAttendance() {
-      const existing = await fetchDailyAttendanceSupabase(selectedClass, selectedDate);
+      const existing = await fetchDailyAttendanceSupabase(currentUser?.username, selectedClass, selectedDate);
       if (!isMounted) return;
 
       setAttendanceRecords(prev => {
@@ -121,7 +122,7 @@ export default function AbsensiHarianView({
 
   // Action: Save Attendance
   const handleSaveAttendance = async () => {
-    const res = await saveDailyAttendanceSupabase(attendanceRecords, classStudents, selectedClass, selectedDate);
+    const res = await saveDailyAttendanceSupabase(currentUser?.username, attendanceRecords, classStudents, selectedClass, selectedDate);
 
     if (!res.success) {
       alert(`Gagal menyimpan presensi ke Supabase: ${res.error}`);
@@ -130,7 +131,7 @@ export default function AbsensiHarianView({
 
     // Refresh attendance recap from Supabase if configured
     if (isSupabaseConfigured) {
-      const updatedRecap = await fetchAttendanceRecapSupabase(attendanceRecap);
+      const updatedRecap = await fetchAttendanceRecapSupabase(currentUser?.username, attendanceRecap);
       setAttendanceRecap(updatedRecap);
     } else {
       const newRecap = [...attendanceRecap];
@@ -164,7 +165,7 @@ export default function AbsensiHarianView({
         }
       });
       setAttendanceRecap(newRecap);
-      saveAttendanceRecapSupabase(newRecap);
+      saveAttendanceRecapSupabase(currentUser?.username, newRecap);
     }
 
     triggerToast(`Presensi Kelas ${selectedClass} Tanggal ${selectedDate} Berhasil Disimpan ke Supabase!`);

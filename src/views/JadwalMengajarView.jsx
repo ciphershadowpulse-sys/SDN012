@@ -20,17 +20,17 @@ const initialSchedules = [
   { id: 'SCH-7', hari: 'Jumat', jam: '08:00 - 09:30', kelas: 'XI MIPA 1', ruang: 'Ruang 11A', mapel: 'Matematika Wajib', topik: 'Pembahasan Tugas Mandiri', status: 'Belum Dimulai' },
 ];
 
-export default function JadwalMengajarView({ classes }) {
+export default function JadwalMengajarView({ currentUser, classes }) {
   const [schedules, setSchedules] = useState(initialSchedules);
   const [selectedDay, setSelectedDay] = useState('Semua Hari');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchTeachingSchedulesSupabase(initialSchedules).then(schs => setSchedules(schs));
+    if (isSupabaseConfigured && currentUser?.username) {
+      fetchTeachingSchedulesSupabase(currentUser.username, initialSchedules).then(schs => setSchedules(schs));
     }
-  }, []);
+  }, [currentUser]);
 
   // Form State
   const [formSchedule, setFormSchedule] = useState({
@@ -61,7 +61,7 @@ export default function JadwalMengajarView({ classes }) {
       status: 'Belum Dimulai'
     };
 
-    saveTeachingScheduleSupabase(newSch);
+    saveTeachingScheduleSupabase(currentUser?.username, newSch);
     setSchedules([...schedules, newSch]);
     setIsModalOpen(false);
     showToast('Agenda Jadwal Mengajar Baru Berhasil Ditambahkan ke Supabase!');

@@ -44,15 +44,53 @@ export default function App() {
   const [attendanceRecap, setAttendanceRecap] = useState(INITIAL_ATTENDANCE_RECAP);
   const [grades, setGrades] = useState(INITIAL_GRADES);
 
-  // Load from Supabase on mount if configured
+  // Master Subjects State with LocalStorage persistence
+  const [subjects, setSubjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem('digital_guru_subjects');
+      return saved ? JSON.parse(saved) : [
+        'Matematika Peminatan',
+        'Matematika Wajib',
+        'Fisika Dasar',
+        'Kimia',
+        'Biologi',
+        'Bahasa Indonesia',
+        'Bahasa Inggris',
+        'Informatika'
+      ];
+    } catch (e) {
+      return [
+        'Matematika Peminatan',
+        'Matematika Wajib',
+        'Fisika Dasar',
+        'Kimia',
+        'Biologi',
+        'Bahasa Indonesia',
+        'Bahasa Inggris',
+        'Informatika'
+      ];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('digital_guru_subjects', JSON.stringify(subjects));
+  }, [subjects]);
+
+  // Load from Supabase on mount if configured — scoped by currentUser.username
   useEffect(() => {
     if (isSupabaseConfigured) {
       fetchUserAccountsSupabase(INITIAL_USER_ACCOUNTS).then(accs => setUserAccounts(accs));
-      fetchStudentsSupabase(INITIAL_STUDENTS).then(stus => setStudents(stus));
-      fetchAttendanceRecapSupabase(INITIAL_ATTENDANCE_RECAP).then(recap => setAttendanceRecap(recap));
-      fetchGradesSupabase(INITIAL_GRADES).then(grds => setGrades(grds));
     }
   }, []);
+
+  useEffect(() => {
+    if (isSupabaseConfigured && currentUser?.username) {
+      const u = currentUser.username;
+      fetchStudentsSupabase(u, INITIAL_STUDENTS).then(stus => setStudents(stus));
+      fetchAttendanceRecapSupabase(u, INITIAL_ATTENDANCE_RECAP).then(recap => setAttendanceRecap(recap));
+      fetchGradesSupabase(u, INITIAL_GRADES).then(grds => setGrades(grds));
+    }
+  }, [currentUser]);
 
   // Persistent States for Daily Attendance & Scanned Students across tab switches
   const [scannedStudentIds, setScannedStudentIds] = useState([]);
@@ -161,6 +199,7 @@ export default function App() {
             {activeTab === 'data_siswa' && (
               <DataSiswaView 
                 key="data_siswa" 
+                currentUser={currentUser}
                 students={homeroomStudents} 
                 setStudents={(updatedHomeroomStudents) => {
                   // Update students in master state
@@ -182,6 +221,7 @@ export default function App() {
             {activeTab === 'absensi_harian' && (
               <AbsensiHarianView 
                 key="absensi_harian" 
+                currentUser={currentUser}
                 students={homeroomStudents} 
                 classes={homeroomClasses} 
                 attendanceRecap={attendanceRecap} 
@@ -207,10 +247,13 @@ export default function App() {
             {activeTab === 'penilaian' && (
               <PenilaianView 
                 key="penilaian" 
+                currentUser={currentUser}
                 students={homeroomStudents} 
-                classes={homeroomClasses} 
+                classes={INITIAL_CLASSES} 
                 grades={grades} 
                 setGrades={setGrades} 
+                subjects={subjects}
+                setSubjects={setSubjects}
               />
             )}
 
@@ -227,14 +270,18 @@ export default function App() {
             {activeTab === 'analytics' && (
               <AnalisisKelasView 
                 key="analytics" 
-                students={homeroomStudents} 
-                classes={homeroomClasses} 
+                students={students} 
+                classes={INITIAL_CLASSES}
+                grades={grades}
+                subjects={subjects}
+                homeroomClass={homeroomClass}
               />
             )}
 
             {activeTab === 'documents' && (
               <BankModulRppView 
                 key="documents" 
+                currentUser={currentUser}
                 classes={homeroomClasses} 
               />
             )}

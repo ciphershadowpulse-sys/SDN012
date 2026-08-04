@@ -67,17 +67,17 @@ const initialDocuments = [
   }
 ];
 
-export default function BankModulRppView({ classes }) {
+export default function BankModulRppView({ currentUser, classes }) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKurikulum, setSelectedKurikulum] = useState('Semua Kurikulum');
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
-      fetchLessonPlansSupabase(initialDocuments).then(docs => setDocuments(docs));
+    if (isSupabaseConfigured && currentUser?.username) {
+      fetchLessonPlansSupabase(currentUser.username, initialDocuments).then(docs => setDocuments(docs));
     }
-  }, []);
+  }, [currentUser]);
   
   // Modals
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -139,7 +139,7 @@ export default function BankModulRppView({ classes }) {
         ]
       };
 
-      saveLessonPlanSupabase(newDoc);
+      saveLessonPlanSupabase(currentUser?.username, newDoc);
       setDocuments([newDoc, ...documents]);
       setIsGenerating(false);
       setIsAiModalOpen(false);

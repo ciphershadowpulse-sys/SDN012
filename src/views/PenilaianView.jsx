@@ -1,18 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GraduationCap, Award, Sparkles, Save, Search, Filter, 
-  CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, ChevronRight, BookOpen
+  CheckCircle2, AlertCircle, FileSpreadsheet, RefreshCw, ChevronRight, BookOpen,
+  Plus, Edit3, Trash2, X
 } from 'lucide-react';
 import { saveGradesSupabase } from '../lib/supabase';
 
+export default function PenilaianView({ currentUser, students, classes, grades, setGrades, subjects, setSubjects }) {
+  // Default fallback for subjects if not provided
+  const availableSubjects = subjects && subjects.length > 0 
+    ? subjects 
+    : ['Matematika Peminatan', 'Matematika Wajib', 'Fisika Dasar'];
 
-export default function PenilaianView({ students, classes, grades, setGrades }) {
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
-  const [selectedSubject, setSelectedSubject] = useState('Matematika Peminatan');
+  const [selectedSubject, setSelectedSubject] = useState(availableSubjects[0] || 'Matematika Peminatan');
   const [searchTerm, setSearchTerm] = useState('');
   const [saveToast, setSaveToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const [loadingAiId, setLoadingAiId] = useState(null);
+
+  // Subject Management Modal States
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [newSubjectInput, setNewSubjectInput] = useState('');
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
+  // Sync selectedSubject if it was deleted or changed
+  useEffect(() => {
+    if (!availableSubjects.includes(selectedSubject)) {
+      setSelectedSubject(availableSubjects[0] || 'Matematika Peminatan');
+    }
+  }, [availableSubjects, selectedSubject]);
 
   // Combine student list with grades
   const studentGrades = students.map(student => {
@@ -168,11 +187,92 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
     }, 1000);
   };
 
-  // Save Grades Action
   const handleSaveGrades = () => {
-    saveGradesSupabase(grades);
+    saveGradesSupabase(currentUser?.username, grades);
+    triggerToast(`Data Penilaian ${selectedSubject} Berhasil Disimpan ke Sistem!`);
+  };
+
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 3500);
+  };
+
+  // Subject Management Handlers
+  const handleAddSubject = (e) => {
+    e?.preventDefault();
+    const nameClean = newSubjectInput.trim();
+    if (!nameClean) return;
+
+    if (availableSubjects.some(s => s.toLowerCase() === nameClean.toLowerCase())) {
+      alert(`Mata Pelajaran "${nameClean}" sudah ada di dalam daftar!`);
+      return;
+    }
+
+    if (setSubjects) {
+      setSubjects([...availableSubjects, nameClean]);
+    }
+    setSelectedSubject(nameClean);
+    setNewSubjectInput('');
+    triggerToast(`Mata pelajaran "${nameClean}" berhasil ditambahkan!`);
+  };
+
+  const handleStartEdit = (index, currentName) => {
+    setEditingIndex(index);
+    setEditingText(currentName);
+  };
+
+  const handleSaveEdit = (index) => {
+    const oldName = availableSubjects[index];
+    const newNameClean = editingText.trim();
+
+    if (!newNameClean) return;
+    if (newNameClean.toLowerCase() !== oldName.toLowerCase() && 
+        availableSubjects.some(s => s.toLowerCase() === newNameClean.toLowerCase())) {
+      alert(`Mata Pelajaran "${newNameClean}" sudah ada!`);
+      return;
+    }
+
+    // Update subjects array
+    const updatedSubjects = [...availableSubjects];
+    updatedSubjects[index] = newNameClean;
+    if (setSubjects) {
+      setSubjects(updatedSubjects);
+    }
+
+    // Update existing grades that used oldName
+    setGrades(prev => prev.map(g => {
+      if (g.mapel === oldName) {
+        return { ...g, mapel: newNameClean };
+      }
+      return g;
+    }));
+
+    if (selectedSubject === oldName) {
+      setSelectedSubject(newNameClean);
+    }
+
+    setEditingIndex(null);
+    setEditingText('');
+    triggerToast(`Mata pelajaran diperbarui menjadi "${newNameClean}"!`);
+  };
+
+  const handleDeleteSubject = (subjectToDelete) => {
+    if (availableSubjects.length <= 1) {
+      alert('Tidak dapat menghapus. Minimal harus ada 1 mata pelajaran.');
+      return;
+    }
+
+    if (window.confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${subjectToDelete}"?`)) {
+      const updated = availableSubjects.filter(s => s !== subjectToDelete);
+      if (setSubjects) {
+        setSubjects(updated);
+      }
+      if (selectedSubject === subjectToDelete) {
+        setSelectedSubject(updated[0]);
+      }
+      triggerToast(`Mata pelajaran "${subjectToDelete}" telah dihapus.`);
+    }
   };
 
   return (
@@ -182,7 +282,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
       exit={{ opacity: 0, y: -15 }}
       className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1 text-gray-100 relative"
     >
-      {/* SAVE TOAST */}
+      {/* SAVE / UPDATE TOAST */}
       <AnimatePresence>
         {saveToast && (
           <motion.div 
@@ -191,7 +291,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-20 right-4 sm:right-8 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-xs sm:text-sm border border-emerald-400/40"
           >
-            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> Data Penilaian {selectedSubject} Berhasil Disimpan ke Sistem!
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> {toastMessage || `Data Penilaian Berhasil Disimpan!`}
           </motion.div>
         )}
       </AnimatePresence>
@@ -201,24 +301,38 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <label className="block text-xs text-gray-400 mb-1">Mata Pelajaran</label>
-            <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
-              <BookOpen className="w-4 h-4 text-primaryPurple" />
-              <select 
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
+                <BookOpen className="w-4 h-4 text-primaryPurple shrink-0" />
+                <select 
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
+                >
+                  {availableSubjects.map(sub => (
+                    <option key={sub} value={sub} className="bg-cardBg">{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tombol Kelola Mapel */}
+              <button 
+                type="button"
+                onClick={() => setIsSubjectModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
+                title="Tambah atau Edit Mata Pelajaran"
               >
-                <option value="Matematika Peminatan" className="bg-cardBg">Matematika Peminatan</option>
-                <option value="Matematika Wajib" className="bg-cardBg">Matematika Wajib</option>
-                <option value="Fisika Dasar" className="bg-cardBg">Fisika Dasar</option>
-              </select>
+                <Plus className="w-3.5 h-3.5" />
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Kelola Mapel</span>
+              </button>
             </div>
           </div>
 
           <div>
             <label className="block text-xs text-gray-400 mb-1">Filter Kelas</label>
             <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
-              <Filter className="w-4 h-4 text-accentBlue" />
+              <Filter className="w-4 h-4 text-accentBlue shrink-0" />
               <select 
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
@@ -233,14 +347,14 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
 
         <button 
           onClick={handleSaveGrades}
-          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition"
+          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-500/20 flex items-center gap-2 hover:opacity-90 transition cursor-pointer"
         >
           <Save className="w-4 h-4" /> Simpan Semua Nilai
         </button>
       </div>
 
       {/* SUMMARY STATS */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className="bg-cardBg border border-cardBorder p-6 rounded-2xl shadow-xl flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 font-medium">Rata-Rata Kelas</p>
@@ -302,7 +416,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
 
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">
-              Bobot: <span className="text-purple-300 font-semibold">Tugas (30%) + UH (20%) + UTS (25%) + UAS (25%)</span>
+              Mata Pelajaran: <span className="text-purple-300 font-bold">{selectedSubject}</span>
             </span>
           </div>
         </div>
@@ -435,7 +549,7 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
                             type="button"
                             onClick={() => handleGenerateAiFeedback(item.id, item.nama, g)}
                             disabled={isAiLoading}
-                            className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                            className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
                           >
                             <Sparkles className={`w-3.5 h-3.5 ${isAiLoading ? 'animate-spin' : ''}`} />
                             {isAiLoading ? 'Memproses AI...' : 'Generate Catatan AI'}
@@ -456,6 +570,158 @@ export default function PenilaianView({ students, classes, grades, setGrades }) 
           </table>
         </div>
       </div>
+
+      {/* MODAL KELOLA MATA PELAJARAN */}
+      <AnimatePresence>
+        {isSubjectModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSubjectModalOpen(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-cardBg border border-cardBorder w-full max-w-lg rounded-2xl shadow-2xl z-10 overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-cardBorder flex items-center justify-between bg-darkBg/50">
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="w-5 h-5 text-primaryPurple" />
+                  <h3 className="font-bold text-base text-white">Kelola Daftar Mata Pelajaran</h3>
+                </div>
+                <button 
+                  onClick={() => setIsSubjectModalOpen(false)}
+                  className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-cardBorder transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Form Tambah Mapel */}
+                <form onSubmit={handleAddSubject} className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-300">
+                    Tambah Mata Pelajaran Baru
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={newSubjectInput}
+                      onChange={(e) => setNewSubjectInput(e.target.value)}
+                      placeholder="Contoh: Kimia, Informatika, Biologi..."
+                      className="flex-1 bg-darkBg border border-cardBorder rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-primaryPurple"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!newSubjectInput.trim()}
+                      className="bg-primaryPurple hover:bg-primaryPurple/90 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* List Mapel Terdaftar */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs font-semibold text-gray-400">
+                    <span>Mata Pelajaran Terdaftar ({availableSubjects.length})</span>
+                    <span>Aksi</span>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {availableSubjects.map((subName, index) => {
+                      const isEditing = editingIndex === index;
+
+                      return (
+                        <div 
+                          key={subName + index}
+                          className="bg-darkBg border border-cardBorder rounded-xl p-3 flex items-center justify-between gap-3"
+                        >
+                          {isEditing ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <input 
+                                type="text"
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="flex-1 bg-cardBg border border-primaryPurple rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+                                autoFocus
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => handleSaveEdit(index)}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
+                              >
+                                Simpan
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => setEditingIndex(null)}
+                                className="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <span className="w-2 h-2 rounded-full bg-primaryPurple shrink-0"></span>
+                                <span className="text-xs font-medium text-white truncate">{subName}</span>
+                                {selectedSubject === subName && (
+                                  <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-semibold border border-purple-500/30">
+                                    Aktif
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button 
+                                  type="button"
+                                  onClick={() => handleStartEdit(index, subName)}
+                                  className="p-1.5 text-gray-400 hover:text-purple-300 hover:bg-cardBorder rounded-lg transition cursor-pointer"
+                                  title="Edit Nama Mapel"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDeleteSubject(subName)}
+                                  className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
+                                  title="Hapus Mapel"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3.5 bg-darkBg/60 border-t border-cardBorder flex justify-end">
+                <button 
+                  onClick={() => setIsSubjectModalOpen(false)}
+                  className="bg-cardBorder hover:bg-gray-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer"
+                >
+                  Selesai
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

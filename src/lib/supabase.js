@@ -74,11 +74,47 @@ export async function loginUserSupabase(username, password) {
   }
 }
 
+export async function registerUserSupabase(account) {
+  if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
+  try {
+    const cleanUsername = (account.username || '').trim();
+    // Cek ketersediaan username di Supabase sebelum mendaftar
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('username', cleanUsername)
+      .maybeSingle();
+
+    if (existing) {
+      return { success: false, error: `Username "${cleanUsername}" sudah terdaftar di Supabase!` };
+    }
+
+    const payload = {
+      id: account.id || `USR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      username: cleanUsername,
+      password: account.password,
+      nama: account.nama,
+      nip: account.nip || '',
+      kelas_binaan: account.kelasBinaan || account.kelas_binaan,
+      role: account.role || 'Wali Kelas',
+      email: account.email || '',
+      phone: account.phone || ''
+    };
+
+    const { data, error } = await supabase.from('profiles').insert([payload]);
+    if (error) throw error;
+    return { success: true, data, mode: 'supabase' };
+  } catch (err) {
+    console.error('Gagal mendaftarkan akun di Supabase:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function saveUserAccountSupabase(account) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = {
-      id: account.id || `USR-${Date.now()}`,
+      id: account.id || `USR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       username: account.username,
       password: account.password,
       nama: account.nama,
@@ -88,7 +124,7 @@ export async function saveUserAccountSupabase(account) {
       email: account.email || '',
       phone: account.phone || ''
     };
-    const { data, error } = await supabase.from('profiles').upsert([payload]);
+    const { data, error } = await supabase.from('profiles').upsert([payload], { onConflict: 'username' });
     if (error) throw error;
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
@@ -99,11 +135,15 @@ export async function saveUserAccountSupabase(account) {
 
 // ==========================================
 // 2. STUDENTS / DATA SISWA
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchStudentsSupabase(defaultStudents) {
+export async function fetchStudentsSupabase(teacherUsername, defaultStudents) {
   if (!isSupabaseConfigured || !supabase) return defaultStudents;
   try {
-    const { data, error } = await supabase.from('students').select('*');
+    const { data, error } = await supabase
+      .from('students')
+      .select('*')
+      .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultStudents;
     return data.map(s => ({
       id: s.id,
@@ -125,11 +165,12 @@ export async function fetchStudentsSupabase(defaultStudents) {
   }
 }
 
-export async function saveStudentSupabase(student) {
+export async function saveStudentSupabase(teacherUsername, student) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = {
       id: student.id,
+      teacher_username: teacherUsername,
       nisn: student.nisn,
       nama: student.nama,
       kelas: student.kelas,
@@ -141,7 +182,9 @@ export async function saveStudentSupabase(student) {
       alamat: student.alamat || '',
       catatan: student.catatan || ''
     };
-    const { data, error } = await supabase.from('students').upsert([payload]);
+    const { data, error } = await supabase
+      .from('students')
+      .upsert([payload], { onConflict: 'id' });
     if (error) throw error;
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
@@ -150,10 +193,14 @@ export async function saveStudentSupabase(student) {
   }
 }
 
-export async function deleteStudentSupabase(studentId) {
+export async function deleteStudentSupabase(teacherUsername, studentId) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
-    const { error } = await supabase.from('students').delete().eq('id', studentId);
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId)
+      .eq('teacher_username', teacherUsername);
     if (error) throw error;
     return { success: true, mode: 'supabase' };
   } catch (err) {
@@ -164,13 +211,15 @@ export async function deleteStudentSupabase(studentId) {
 
 // ==========================================
 // 3. DAILY ATTENDANCES / PRESENSI HARIAN
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchDailyAttendanceSupabase(kelas, date) {
+export async function fetchDailyAttendanceSupabase(teacherUsername, kelas, date) {
   if (!isSupabaseConfigured || !supabase) return {};
   try {
     const { data, error } = await supabase
       .from('daily_attendances')
       .select('*')
+      .eq('teacher_username', teacherUsername)
       .eq('kelas', kelas)
       .eq('date', date);
 
@@ -190,13 +239,14 @@ export async function fetchDailyAttendanceSupabase(kelas, date) {
   }
 }
 
-export async function saveDailyAttendanceSupabase(attendanceRecords, classStudents, kelas, date) {
+export async function saveDailyAttendanceSupabase(teacherUsername, attendanceRecords, classStudents, kelas, date) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const validStudentIds = new Set((classStudents || []).map(s => s.id));
     const payload = Object.entries(attendanceRecords)
       .filter(([studentId]) => validStudentIds.has(studentId))
       .map(([studentId, record]) => ({
+        teacher_username: teacherUsername,
         student_id: studentId,
         kelas,
         date,
@@ -209,7 +259,7 @@ export async function saveDailyAttendanceSupabase(attendanceRecords, classStuden
 
     const { data, error } = await supabase
       .from('daily_attendances')
-      .upsert(payload, { onConflict: 'student_id,date' });
+      .upsert(payload, { onConflict: 'teacher_username,student_id,date' });
 
     if (error) throw error;
     return { success: true, data, mode: 'supabase' };
@@ -221,11 +271,15 @@ export async function saveDailyAttendanceSupabase(attendanceRecords, classStuden
 
 // ==========================================
 // 4. ATTENDANCE RECAP / REKAP ABSENSI
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchAttendanceRecapSupabase(defaultRecap) {
+export async function fetchAttendanceRecapSupabase(teacherUsername, defaultRecap) {
   if (!isSupabaseConfigured || !supabase) return defaultRecap;
   try {
-    const { data, error } = await supabase.from('attendance_recap').select('*');
+    const { data, error } = await supabase
+      .from('attendance_recap')
+      .select('*')
+      .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultRecap;
     return data.map(r => ({
       studentId: r.student_id || r.studentId,
@@ -243,10 +297,11 @@ export async function fetchAttendanceRecapSupabase(defaultRecap) {
   }
 }
 
-export async function saveAttendanceRecapSupabase(recapArray) {
+export async function saveAttendanceRecapSupabase(teacherUsername, recapArray) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = recapArray.map(r => ({
+      teacher_username: teacherUsername,
       student_id: r.studentId || r.student_id,
       nama: r.nama || '',
       kelas: r.kelas || '',
@@ -256,7 +311,9 @@ export async function saveAttendanceRecapSupabase(recapArray) {
       alpa: r.alpa || 0,
       persentase: r.persentase || 100
     }));
-    const { error } = await supabase.from('attendance_recap').upsert(payload, { onConflict: 'student_id' });
+    const { error } = await supabase
+      .from('attendance_recap')
+      .upsert(payload, { onConflict: 'teacher_username,student_id' });
     if (error) throw error;
     return { success: true, mode: 'supabase' };
   } catch (err) {
@@ -267,11 +324,15 @@ export async function saveAttendanceRecapSupabase(recapArray) {
 
 // ==========================================
 // 5. GRADES / PENILAIAN SISWA
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchGradesSupabase(defaultGrades) {
+export async function fetchGradesSupabase(teacherUsername, defaultGrades) {
   if (!isSupabaseConfigured || !supabase) return defaultGrades;
   try {
-    const { data, error } = await supabase.from('grades').select('*');
+    const { data, error } = await supabase
+      .from('grades')
+      .select('*')
+      .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultGrades;
     return data.map(g => ({
       studentId: g.student_id || g.studentId,
@@ -294,10 +355,11 @@ export async function fetchGradesSupabase(defaultGrades) {
   }
 }
 
-export async function saveGradesSupabase(gradesArray) {
+export async function saveGradesSupabase(teacherUsername, gradesArray) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = gradesArray.map(g => ({
+      teacher_username: teacherUsername,
       student_id: g.studentId || g.student_id,
       nama: g.nama || '',
       kelas: g.kelas || '',
@@ -312,7 +374,9 @@ export async function saveGradesSupabase(gradesArray) {
       status: g.status || 'Tuntas',
       catatan_ai: g.catatanAi || g.catatan_ai || ''
     }));
-    const { error } = await supabase.from('grades').upsert(payload, { onConflict: 'student_id,mapel' });
+    const { error } = await supabase
+      .from('grades')
+      .upsert(payload, { onConflict: 'teacher_username,student_id,mapel' });
     if (error) throw error;
     return { success: true, mode: 'supabase' };
   } catch (err) {
@@ -323,11 +387,15 @@ export async function saveGradesSupabase(gradesArray) {
 
 // ==========================================
 // 6. TEACHING SCHEDULES / JADWAL MENGAJAR
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchTeachingSchedulesSupabase(defaultSchedules) {
+export async function fetchTeachingSchedulesSupabase(teacherUsername, defaultSchedules) {
   if (!isSupabaseConfigured || !supabase) return defaultSchedules;
   try {
-    const { data, error } = await supabase.from('teaching_schedules').select('*');
+    const { data, error } = await supabase
+      .from('teaching_schedules')
+      .select('*')
+      .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultSchedules;
     return data.map(s => ({
       id: s.id,
@@ -345,11 +413,12 @@ export async function fetchTeachingSchedulesSupabase(defaultSchedules) {
   }
 }
 
-export async function saveTeachingScheduleSupabase(schedule) {
+export async function saveTeachingScheduleSupabase(teacherUsername, schedule) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = {
       id: schedule.id || `SCH-${Date.now()}`,
+      teacher_username: teacherUsername,
       hari: schedule.hari,
       jam: schedule.jam,
       kelas: schedule.kelas,
@@ -358,7 +427,9 @@ export async function saveTeachingScheduleSupabase(schedule) {
       topik: schedule.topik,
       status: schedule.status || 'Belum Dimulai'
     };
-    const { data, error } = await supabase.from('teaching_schedules').upsert([payload]);
+    const { data, error } = await supabase
+      .from('teaching_schedules')
+      .upsert([payload], { onConflict: 'id' });
     if (error) throw error;
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
@@ -369,11 +440,15 @@ export async function saveTeachingScheduleSupabase(schedule) {
 
 // ==========================================
 // 7. LESSON PLANS / BANK MODUL & RPP
+// Semua operasi di-scope berdasarkan teacherUsername
 // ==========================================
-export async function fetchLessonPlansSupabase(defaultPlans) {
+export async function fetchLessonPlansSupabase(teacherUsername, defaultPlans) {
   if (!isSupabaseConfigured || !supabase) return defaultPlans;
   try {
-    const { data, error } = await supabase.from('lesson_plans').select('*');
+    const { data, error } = await supabase
+      .from('lesson_plans')
+      .select('*')
+      .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultPlans;
     return data.map(p => ({
       id: p.id,
@@ -398,11 +473,12 @@ export async function fetchLessonPlansSupabase(defaultPlans) {
   }
 }
 
-export async function saveLessonPlanSupabase(plan) {
+export async function saveLessonPlanSupabase(teacherUsername, plan) {
   if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
   try {
     const payload = {
       id: plan.id || `RPP-${Date.now()}`,
+      teacher_username: teacherUsername,
       judul: plan.judul,
       kelas: plan.kelas,
       mapel: plan.mapel,
@@ -418,7 +494,9 @@ export async function saveLessonPlanSupabase(plan) {
       file_url: plan.fileUrl || plan.file_url || '',
       status: plan.status || 'Terverifikasi'
     };
-    const { data, error } = await supabase.from('lesson_plans').upsert([payload]);
+    const { data, error } = await supabase
+      .from('lesson_plans')
+      .upsert([payload], { onConflict: 'id' });
     if (error) throw error;
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
@@ -429,6 +507,7 @@ export async function saveLessonPlanSupabase(plan) {
 
 // ==========================================
 // 8. SCHOOL SETTINGS / PENGATURAN SEKOLAH
+// Sudah di-scope berdasarkan teacherUsername sejak awal
 // ==========================================
 export async function fetchSchoolSettingsSupabase(teacherUsername, defaultSettings) {
   if (!isSupabaseConfigured || !supabase) return defaultSettings;

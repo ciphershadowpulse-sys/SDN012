@@ -21,6 +21,9 @@
 --  10. Jadwal Mengajar         → teaching_schedules
 --  11. Pengaturan              → profiles, school_settings
 -- =========================================================
+-- MULTI-TENANT: Setiap tabel data memiliki kolom teacher_username
+-- sehingga data masing-masing guru terisolasi & tidak saling timpah.
+-- =========================================================
 
 
 -- =========================================================
@@ -63,9 +66,11 @@ CREATE TABLE public.profiles (
 );
 
 -- 2. STUDENTS (Data Siswa, Dashboard, Absensi, Penilaian, Chat AI)
+--    teacher_username: mengisolasi data siswa per guru
 CREATE TABLE public.students (
   id TEXT PRIMARY KEY,
-  nisn TEXT UNIQUE NOT NULL,
+  teacher_username TEXT NOT NULL,
+  nisn TEXT NOT NULL,
   alt_nisn TEXT,
   nama TEXT NOT NULL,
   kelas TEXT NOT NULL,
@@ -77,43 +82,54 @@ CREATE TABLE public.students (
   alamat TEXT,
   catatan TEXT,
   qr_image TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (teacher_username, nisn)
 );
 
 CREATE INDEX idx_students_kelas ON public.students(kelas);
+CREATE INDEX idx_students_teacher ON public.students(teacher_username);
 
 -- 3. DAILY_ATTENDANCES (Absensi Harian — QR Scanner)
+--    teacher_username: mengisolasi data presensi per guru
 CREATE TABLE public.daily_attendances (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  teacher_username TEXT NOT NULL,
   student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   kelas TEXT NOT NULL,
   date DATE NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('Hadir', 'Sakit', 'Izin', 'Alpa')),
   catatan TEXT,
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (student_id, date)
+  UNIQUE (teacher_username, student_id, date)
 );
 
 CREATE INDEX idx_daily_att_date ON public.daily_attendances(date);
 CREATE INDEX idx_daily_att_student ON public.daily_attendances(student_id);
+CREATE INDEX idx_daily_att_teacher ON public.daily_attendances(teacher_username);
 
 -- 4. ATTENDANCE_RECAP (Rekap Absensi, Dashboard, Chat AI)
+--    teacher_username: mengisolasi rekap absensi per guru
 CREATE TABLE public.attendance_recap (
-  student_id TEXT PRIMARY KEY REFERENCES public.students(id) ON DELETE CASCADE,
+  teacher_username TEXT NOT NULL,
+  student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   nama TEXT NOT NULL,
   kelas TEXT NOT NULL,
   hadir INTEGER DEFAULT 0,
   sakit INTEGER DEFAULT 0,
   izin INTEGER DEFAULT 0,
   alpa INTEGER DEFAULT 0,
-  persentase NUMERIC(5,2) DEFAULT 100.00
+  persentase NUMERIC(5,2) DEFAULT 100.00,
+  PRIMARY KEY (teacher_username, student_id)
 );
 
 CREATE INDEX idx_recap_kelas ON public.attendance_recap(kelas);
+CREATE INDEX idx_recap_teacher ON public.attendance_recap(teacher_username);
 
 -- 5. GRADES (Penilaian Siswa, Dashboard, Chat AI, Analisis Kelas)
+--    teacher_username: mengisolasi data penilaian per guru
 CREATE TABLE public.grades (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  teacher_username TEXT NOT NULL,
   student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
   nama TEXT NOT NULL,
   kelas TEXT NOT NULL,
@@ -127,16 +143,18 @@ CREATE TABLE public.grades (
   predikat TEXT DEFAULT 'C',
   status TEXT DEFAULT 'Remedial',
   catatan_ai TEXT,
-  UNIQUE (student_id, mapel)
+  UNIQUE (teacher_username, student_id, mapel)
 );
 
 CREATE INDEX idx_grades_kelas ON public.grades(kelas);
 CREATE INDEX idx_grades_student ON public.grades(student_id);
+CREATE INDEX idx_grades_teacher ON public.grades(teacher_username);
 
 -- 6. TEACHING_SCHEDULES (Jadwal Mengajar)
+--    teacher_username: mengisolasi jadwal per guru
 CREATE TABLE public.teaching_schedules (
   id TEXT PRIMARY KEY,
-  teacher_username TEXT,
+  teacher_username TEXT NOT NULL,
   hari TEXT NOT NULL,
   jam TEXT NOT NULL,
   kelas TEXT NOT NULL,
@@ -150,9 +168,10 @@ CREATE TABLE public.teaching_schedules (
 CREATE INDEX idx_schedules_teacher ON public.teaching_schedules(teacher_username);
 
 -- 7. LESSON_PLANS (Bank Modul & RPP)
+--    teacher_username: mengisolasi RPP per guru
 CREATE TABLE public.lesson_plans (
   id TEXT PRIMARY KEY,
-  teacher_username TEXT,
+  teacher_username TEXT NOT NULL,
   judul TEXT NOT NULL,
   kelas TEXT NOT NULL,
   mapel TEXT NOT NULL,
@@ -174,23 +193,28 @@ CREATE INDEX idx_lesson_teacher ON public.lesson_plans(teacher_username);
 CREATE INDEX idx_lesson_kelas ON public.lesson_plans(kelas);
 
 -- 8. CLASS_ANALYTICS (Analisis Kelas)
+--    teacher_username: mengisolasi analisis per guru
 CREATE TABLE public.class_analytics (
   id TEXT PRIMARY KEY,
-  kelas TEXT NOT NULL UNIQUE,
+  teacher_username TEXT NOT NULL,
+  kelas TEXT NOT NULL,
   rata_rata_kelas NUMERIC(5,2) DEFAULT 0.00,
   ketuntasan_persen NUMERIC(5,2) DEFAULT 0.00,
   jumlah_siswa INTEGER DEFAULT 0,
   jumlah_tuntas INTEGER DEFAULT 0,
   jumlah_remedial INTEGER DEFAULT 0,
   catatan_ai TEXT,
-  updated_at TIMESTAMPTZ DEFAULT now()
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (teacher_username, kelas)
 );
+
+CREATE INDEX idx_analytics_teacher ON public.class_analytics(teacher_username);
 
 -- 9. SCHOOL_SETTINGS (Pengaturan per guru)
 CREATE TABLE public.school_settings (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   teacher_username TEXT UNIQUE NOT NULL,
-  nama_sekolah TEXT DEFAULT 'SMA Negeri 1 Jakarta',
+  nama_sekolah TEXT DEFAULT 'SDN 012 Tarakan',
   tahun_ajaran TEXT DEFAULT '2026/2027 (Semester Ganjil)',
   kkm_default INTEGER DEFAULT 75,
   kurikulum TEXT DEFAULT 'Kurikulum Merdeka',
@@ -205,22 +229,23 @@ CREATE TABLE public.school_settings (
 -- =========================================================
 
 -- TRIGGER FUNCTION 1: Inisialisasi & sinkronisasi siswa ke attendance_recap
+-- Sekarang menyertakan teacher_username agar rekap terisolasi per guru
 CREATE OR REPLACE FUNCTION public.fn_sync_student_to_recap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  INSERT INTO public.attendance_recap (student_id, nama, kelas, hadir, sakit, izin, alpa, persentase)
-  VALUES (NEW.id, NEW.nama, NEW.kelas, 0, 0, 0, 0, 100.00)
-  ON CONFLICT (student_id) DO UPDATE SET
+  INSERT INTO public.attendance_recap (teacher_username, student_id, nama, kelas, hadir, sakit, izin, alpa, persentase)
+  VALUES (NEW.teacher_username, NEW.id, NEW.nama, NEW.kelas, 0, 0, 0, 0, 100.00)
+  ON CONFLICT (teacher_username, student_id) DO UPDATE SET
     nama = EXCLUDED.nama,
     kelas = EXCLUDED.kelas;
 
   -- Update nama/kelas di tabel grades jika data siswa diperbarui
   UPDATE public.grades
   SET nama = NEW.nama, kelas = NEW.kelas
-  WHERE student_id = NEW.id;
+  WHERE student_id = NEW.id AND teacher_username = NEW.teacher_username;
 
   RETURN NEW;
 END;
@@ -232,6 +257,7 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_sync_student_to_recap();
 
 
 -- TRIGGER FUNCTION 2: Auto-update rekap absensi saat ada presensi harian
+-- Sekarang menyertakan teacher_username agar rekap terisolasi per guru
 CREATE OR REPLACE FUNCTION public.fn_update_attendance_recap()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -239,6 +265,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   v_student_id TEXT;
+  v_teacher_username TEXT;
   v_nama TEXT;
   v_kelas TEXT;
   v_hadir INTEGER;
@@ -250,8 +277,10 @@ DECLARE
 BEGIN
   IF TG_OP = 'DELETE' THEN
     v_student_id := OLD.student_id;
+    v_teacher_username := OLD.teacher_username;
   ELSE
     v_student_id := NEW.student_id;
+    v_teacher_username := NEW.teacher_username;
   END IF;
 
   SELECT s.nama, s.kelas INTO v_nama, v_kelas
@@ -265,7 +294,7 @@ BEGIN
     COUNT(*)
   INTO v_hadir, v_sakit, v_izin, v_alpa, v_total
   FROM public.daily_attendances da
-  WHERE da.student_id = v_student_id;
+  WHERE da.student_id = v_student_id AND da.teacher_username = v_teacher_username;
 
   IF v_total > 0 THEN
     v_persen := ROUND((v_hadir::NUMERIC / v_total::NUMERIC) * 100, 2);
@@ -273,9 +302,9 @@ BEGIN
     v_persen := 100.00;
   END IF;
 
-  INSERT INTO public.attendance_recap (student_id, nama, kelas, hadir, sakit, izin, alpa, persentase)
-  VALUES (v_student_id, v_nama, v_kelas, v_hadir, v_sakit, v_izin, v_alpa, v_persen)
-  ON CONFLICT (student_id) DO UPDATE SET
+  INSERT INTO public.attendance_recap (teacher_username, student_id, nama, kelas, hadir, sakit, izin, alpa, persentase)
+  VALUES (v_teacher_username, v_student_id, v_nama, v_kelas, v_hadir, v_sakit, v_izin, v_alpa, v_persen)
+  ON CONFLICT (teacher_username, student_id) DO UPDATE SET
     nama = EXCLUDED.nama,
     kelas = EXCLUDED.kelas,
     hadir = EXCLUDED.hadir,
@@ -341,6 +370,7 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_auto_calc_grades();
 
 -- =========================================================
 -- LANGKAH 4: MASUKKAN DATA DEMO
+-- Setiap row kini menyertakan teacher_username untuk isolasi
 -- =========================================================
 
 -- 4 Profil Wali Kelas
@@ -351,35 +381,40 @@ INSERT INTO public.profiles (id, username, password, nama, nip, kelas_binaan, em
   ('USR-004', 'walikelas4', '123456', 'Ibu Dewi Lestari, S.Pd', '19900311 201503 2 009', 'X MIPA 1', 'dewi.lestari@sekolah.sch.id', '081234567893')
 ON CONFLICT (username) DO NOTHING;
 
--- 10 Siswa (Otomatis men-trigger fn_sync_student_to_recap untuk membuat baris awal di attendance_recap)
-INSERT INTO public.students (id, nisn, alt_nisn, nama, kelas, gender, email, nama_ortu, phone_ortu, alamat, catatan, qr_image) VALUES
-  ('STU-001', '0012345688', 'Murid-SDN012-11', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Laki-Laki', 'rizky.pratama@siswa.belajar.id', 'Bpk. Hendra Pratama', '081234567801', 'Jl. Merdeka No. 12, Jakarta', 'Aktif dalam diskusi matematika, ketua OSIS.', '/qr1.png'),
-  ('STU-002', '3184861266', NULL, 'Anisa Rahmawati', 'XII MIPA 1', 'Perempuan', 'anisa.rahma@siswa.belajar.id', 'Ibu Kurniawati', '081234567802', 'Jl. Melati No. 45, Jakarta', 'Sangat teliti dalam pengerjaan tugas matematika.', '/qr2.png'),
-  ('STU-003', '0051234503', NULL, 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Laki-Laki', 'bagus.setyo@siswa.belajar.id', 'Bpk. Tri Nugroho', '081234567803', 'Jl. Mawar Gg. 3 No. 8, Jakarta', 'Perlu bimbingan ekstra pada materi kalkulus.', NULL),
-  ('STU-004', '0051234504', NULL, 'Citra Dewi Lestari', 'XII MIPA 1', 'Perempuan', 'citra.dewi@siswa.belajar.id', 'Ibu Rahayu Lestari', '081234567804', 'Jl. Sudirman No. 88, Jakarta', 'Juara 2 Olimpiade Fisika tingkat Kota.', NULL),
-  ('STU-005', '0051234505', NULL, 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Laki-Laki', 'daffa.farhan@siswa.belajar.id', 'Bpk. Ahmad Farhan', '081234567805', 'Jl. Gatot Subroto No. 19, Jakarta', 'Disiplin dan selalu hadir tepat waktu.', NULL),
-  ('STU-006', '0051234506', NULL, 'Eka Putri Maharani', 'XII MIPA 2', 'Perempuan', 'eka.putri@siswa.belajar.id', 'Ibu Maharani', '081234567806', 'Jl. Anggrek No. 34, Jakarta', 'Aktif dalam kegiatan ekstrakurikuler PMR.', NULL),
-  ('STU-007', '0051234507', NULL, 'Fajar Nugraha', 'XII MIPA 2', 'Laki-Laki', 'fajar.nugraha@siswa.belajar.id', 'Bpk. Herman Nugraha', '081234567807', 'Jl. Flamboyan No. 12, Jakarta', 'Sering alpa tanpa keterangan pada minggu lalu.', NULL),
-  ('STU-008', '0051234508', NULL, 'Gita Gutawa Putri', 'XI MIPA 1', 'Perempuan', 'gita.gutawa@siswa.belajar.id', 'Bpk. Erwin Gutawa', '081234567808', 'Jl. Cempaka No. 90, Jakarta', 'Bakat tinggi di bidang seni & matematika.', NULL),
-  ('STU-009', '0051234509', NULL, 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Laki-Laki', 'hafiz.sina@siswa.belajar.id', 'Bpk. Lukman Sina', '081234567809', 'Jl. Diponegoro No. 23, Jakarta', 'Memiliki logika pemecahan masalah matematika sangat baik.', NULL),
-  ('STU-010', '0051234510', NULL, 'Intan Nuraini', 'X MIPA 1', 'Perempuan', 'intan.nuraini@siswa.belajar.id', 'Ibu Nuraini', '081234567810', 'Jl. Veteran No. 56, Jakarta', 'Siswa baru berprestasi lulusan SMPN 1.', NULL)
+-- 10 Siswa — setiap siswa dimiliki oleh guru tertentu (teacher_username)
+-- walikelas1 memiliki STU-001 s.d STU-005 (XII MIPA 1)
+-- walikelas2 memiliki STU-006, STU-007 (XII MIPA 2)
+-- walikelas3 memiliki STU-008, STU-009 (XI MIPA 1)
+-- walikelas4 memiliki STU-010 (X MIPA 1)
+INSERT INTO public.students (id, teacher_username, nisn, alt_nisn, nama, kelas, gender, email, nama_ortu, phone_ortu, alamat, catatan, qr_image) VALUES
+  ('STU-001', 'walikelas1', '0012345688', 'Murid-SDN012-11', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Laki-Laki', 'rizky.pratama@siswa.belajar.id', 'Bpk. Hendra Pratama', '081234567801', 'Jl. Merdeka No. 12, Jakarta', 'Aktif dalam diskusi matematika, ketua OSIS.', '/qr1.png'),
+  ('STU-002', 'walikelas1', '3184861266', NULL, 'Anisa Rahmawati', 'XII MIPA 1', 'Perempuan', 'anisa.rahma@siswa.belajar.id', 'Ibu Kurniawati', '081234567802', 'Jl. Melati No. 45, Jakarta', 'Sangat teliti dalam pengerjaan tugas matematika.', '/qr2.png'),
+  ('STU-003', 'walikelas1', '0051234503', NULL, 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Laki-Laki', 'bagus.setyo@siswa.belajar.id', 'Bpk. Tri Nugroho', '081234567803', 'Jl. Mawar Gg. 3 No. 8, Jakarta', 'Perlu bimbingan ekstra pada materi kalkulus.', NULL),
+  ('STU-004', 'walikelas1', '0051234504', NULL, 'Citra Dewi Lestari', 'XII MIPA 1', 'Perempuan', 'citra.dewi@siswa.belajar.id', 'Ibu Rahayu Lestari', '081234567804', 'Jl. Sudirman No. 88, Jakarta', 'Juara 2 Olimpiade Fisika tingkat Kota.', NULL),
+  ('STU-005', 'walikelas1', '0051234505', NULL, 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Laki-Laki', 'daffa.farhan@siswa.belajar.id', 'Bpk. Ahmad Farhan', '081234567805', 'Jl. Gatot Subroto No. 19, Jakarta', 'Disiplin dan selalu hadir tepat waktu.', NULL),
+  ('STU-006', 'walikelas2', '0051234506', NULL, 'Eka Putri Maharani', 'XII MIPA 2', 'Perempuan', 'eka.putri@siswa.belajar.id', 'Ibu Maharani', '081234567806', 'Jl. Anggrek No. 34, Jakarta', 'Aktif dalam kegiatan ekstrakurikuler PMR.', NULL),
+  ('STU-007', 'walikelas2', '0051234507', NULL, 'Fajar Nugraha', 'XII MIPA 2', 'Laki-Laki', 'fajar.nugraha@siswa.belajar.id', 'Bpk. Herman Nugraha', '081234567807', 'Jl. Flamboyan No. 12, Jakarta', 'Sering alpa tanpa keterangan pada minggu lalu.', NULL),
+  ('STU-008', 'walikelas3', '0051234508', NULL, 'Gita Gutawa Putri', 'XI MIPA 1', 'Perempuan', 'gita.gutawa@siswa.belajar.id', 'Bpk. Erwin Gutawa', '081234567808', 'Jl. Cempaka No. 90, Jakarta', 'Bakat tinggi di bidang seni & matematika.', NULL),
+  ('STU-009', 'walikelas3', '0051234509', NULL, 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Laki-Laki', 'hafiz.sina@siswa.belajar.id', 'Bpk. Lukman Sina', '081234567809', 'Jl. Diponegoro No. 23, Jakarta', 'Memiliki logika pemecahan masalah matematika sangat baik.', NULL),
+  ('STU-010', 'walikelas4', '0051234510', NULL, 'Intan Nuraini', 'X MIPA 1', 'Perempuan', 'intan.nuraini@siswa.belajar.id', 'Ibu Nuraini', '081234567810', 'Jl. Veteran No. 56, Jakarta', 'Siswa baru berprestasi lulusan SMPN 1.', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 -- Penilaian / Grades (10 Siswa — trigger auto-calc nilai_akhir)
-INSERT INTO public.grades (student_id, nama, kelas, mapel, tugas1, tugas2, uh, uts, uas, catatan_ai) VALUES
-  ('STU-001', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Matematika Peminatan', 88, 90, 85, 92, 90, 'Penguasaan konsep kalkulus dan turunan fungsi sangat unggul. Tingkatkan konsistensi dalam latihan soal kompleks.'),
-  ('STU-002', 'Anisa Rahmawati', 'XII MIPA 1', 'Matematika Peminatan', 95, 96, 92, 95, 94, 'Sangat luar biasa! Pemahaman teori dan penyelesaian masalah matematika sangat presisi.'),
-  ('STU-003', 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Matematika Peminatan', 70, 75, 68, 72, 70, 'Perlu pengayaan ulang pada dasar-dasar trigonometri dan turunan. Disarankan mengikuti tutor sebaya.'),
-  ('STU-004', 'Citra Dewi Lestari', 'XII MIPA 1', 'Matematika Peminatan', 92, 90, 94, 90, 93, 'Daya analisis sangat tajam. Mampu menerapkan rumus turunan pada soal cerita fisika matematika.'),
-  ('STU-005', 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Matematika Peminatan', 85, 88, 84, 86, 88, 'Capaian hasil belajar sangat baik dan stabil. Siap melanjutkan ke bab vektor dan matriks.'),
-  ('STU-006', 'Eka Putri Maharani', 'XII MIPA 2', 'Matematika Peminatan', 80, 82, 85, 83, 81, 'Hasil pengerjaan tugas sangat baik. Pertahankan fokus saat ujian semester.'),
-  ('STU-007', 'Fajar Nugraha', 'XII MIPA 2', 'Matematika Peminatan', 65, 60, 62, 64, 60, 'Memerlukan remedial khusus dan pendampingan hadir di kelas. Berikan tugas perbaikan mandiri.'),
-  ('STU-008', 'Gita Gutawa Putri', 'XI MIPA 1', 'Matematika Peminatan', 90, 92, 88, 90, 91, 'Sangat aktif di kelas dan menunjukkan logika yang terstruktur dengan rapi.'),
-  ('STU-009', 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Matematika Peminatan', 88, 85, 90, 89, 87, 'Kemampuan eksplorasi mandiri amat baik. Pertahankan performa positif ini.'),
-  ('STU-010', 'Intan Nuraini', 'X MIPA 1', 'Matematika Peminatan', 92, 95, 91, 93, 92, 'Prestasi gemilang sebagai siswa baru. Mampu beradaptasi cepat dengan tingkat kesulitan soal.')
-ON CONFLICT (student_id, mapel) DO NOTHING;
+-- Setiap grade dimiliki oleh guru yang memiliki siswa tsb
+INSERT INTO public.grades (teacher_username, student_id, nama, kelas, mapel, tugas1, tugas2, uh, uts, uas, catatan_ai) VALUES
+  ('walikelas1', 'STU-001', 'Ahmad Rizky Pratama', 'XII MIPA 1', 'Matematika Peminatan', 88, 90, 85, 92, 90, 'Penguasaan konsep kalkulus dan turunan fungsi sangat unggul. Tingkatkan konsistensi dalam latihan soal kompleks.'),
+  ('walikelas1', 'STU-002', 'Anisa Rahmawati', 'XII MIPA 1', 'Matematika Peminatan', 95, 96, 92, 95, 94, 'Sangat luar biasa! Pemahaman teori dan penyelesaian masalah matematika sangat presisi.'),
+  ('walikelas1', 'STU-003', 'Bagus Setyo Nugroho', 'XII MIPA 1', 'Matematika Peminatan', 70, 75, 68, 72, 70, 'Perlu pengayaan ulang pada dasar-dasar trigonometri dan turunan. Disarankan mengikuti tutor sebaya.'),
+  ('walikelas1', 'STU-004', 'Citra Dewi Lestari', 'XII MIPA 1', 'Matematika Peminatan', 92, 90, 94, 90, 93, 'Daya analisis sangat tajam. Mampu menerapkan rumus turunan pada soal cerita fisika matematika.'),
+  ('walikelas1', 'STU-005', 'Daffa Farhan Al-Ghazali', 'XII MIPA 1', 'Matematika Peminatan', 85, 88, 84, 86, 88, 'Capaian hasil belajar sangat baik dan stabil. Siap melanjutkan ke bab vektor dan matriks.'),
+  ('walikelas2', 'STU-006', 'Eka Putri Maharani', 'XII MIPA 2', 'Matematika Peminatan', 80, 82, 85, 83, 81, 'Hasil pengerjaan tugas sangat baik. Pertahankan fokus saat ujian semester.'),
+  ('walikelas2', 'STU-007', 'Fajar Nugraha', 'XII MIPA 2', 'Matematika Peminatan', 65, 60, 62, 64, 60, 'Memerlukan remedial khusus dan pendampingan hadir di kelas. Berikan tugas perbaikan mandiri.'),
+  ('walikelas3', 'STU-008', 'Gita Gutawa Putri', 'XI MIPA 1', 'Matematika Peminatan', 90, 92, 88, 90, 91, 'Sangat aktif di kelas dan menunjukkan logika yang terstruktur dengan rapi.'),
+  ('walikelas3', 'STU-009', 'Hafiz Ibnu Sina', 'XI MIPA 1', 'Matematika Peminatan', 88, 85, 90, 89, 87, 'Kemampuan eksplorasi mandiri amat baik. Pertahankan performa positif ini.'),
+  ('walikelas4', 'STU-010', 'Intan Nuraini', 'X MIPA 1', 'Matematika Peminatan', 92, 95, 91, 93, 92, 'Prestasi gemilang sebagai siswa baru. Mampu beradaptasi cepat dengan tingkat kesulitan soal.')
+ON CONFLICT (teacher_username, student_id, mapel) DO NOTHING;
 
--- Jadwal Mengajar (7 Jadwal)
+-- Jadwal Mengajar (7 Jadwal — milik walikelas1)
 INSERT INTO public.teaching_schedules (id, teacher_username, hari, jam, kelas, mapel, ruangan, topik, status) VALUES
   ('SCH-001', 'walikelas1', 'Senin', '07:30 - 09:00', 'XII MIPA 1', 'Matematika Peminatan', 'Lab Mat 1', 'Turunan Fungsi Trigonometri', 'Selesai'),
   ('SCH-002', 'walikelas1', 'Senin', '10:00 - 11:30', 'XII MIPA 2', 'Matematika Peminatan', 'Ruang 12B', 'Vektor & Proyeksi 3D', 'Selesai'),
@@ -390,7 +425,7 @@ INSERT INTO public.teaching_schedules (id, teacher_username, hari, jam, kelas, m
   ('SCH-007', 'walikelas1', 'Jumat', '08:00 - 09:30', 'XI MIPA 1', 'Matematika Wajib', 'Ruang 11A', 'Pembahasan Tugas Mandiri', 'Belum Dimulai')
 ON CONFLICT (id) DO NOTHING;
 
--- Bank Modul & RPP (3 Dokumen)
+-- Bank Modul & RPP (3 Dokumen — milik walikelas1)
 INSERT INTO public.lesson_plans (id, teacher_username, judul, kelas, mapel, fase, kurikulum, alokasi_waktu, penulis, tanggal, format, ringkasan, tujuan, langkah, file_url, status) VALUES
   ('RPP-001', 'walikelas1',
     'RPP Modul Ajar — Turunan Fungsi Trigonometri & Kalkulus',
@@ -418,13 +453,13 @@ INSERT INTO public.lesson_plans (id, teacher_username, judul, kelas, mapel, fase
     '/docs/rpp_statistika.pdf', 'Terverifikasi')
 ON CONFLICT (id) DO NOTHING;
 
--- Analisis Kelas (4 Kelas)
-INSERT INTO public.class_analytics (id, kelas, rata_rata_kelas, ketuntasan_persen, jumlah_siswa, jumlah_tuntas, jumlah_remedial, catatan_ai) VALUES
-  ('ANL-001', 'XII MIPA 1', 86.48, 80.00, 5, 4, 1, 'Tingkat ketuntasan kumulatif kelas berada pada kategori baik. Diperlukan pendampingan khusus untuk 1 siswa pada materi turunan rantai.'),
-  ('ANL-002', 'XII MIPA 2', 72.60, 50.00, 2, 1, 1, 'Perlu peningkatan signifikan. 1 dari 2 siswa membutuhkan remedial.'),
-  ('ANL-003', 'XI MIPA 1', 89.05, 100.00, 2, 2, 0, 'Seluruh siswa mencapai KKM. Pertahankan capaian ini dan berikan pengayaan materi.'),
-  ('ANL-004', 'X MIPA 1', 92.50, 100.00, 1, 1, 0, 'Siswa menunjukkan performa sangat baik. Siap untuk materi tingkat lanjut.')
-ON CONFLICT (kelas) DO NOTHING;
+-- Analisis Kelas (4 Kelas — masing-masing milik gurunya)
+INSERT INTO public.class_analytics (id, teacher_username, kelas, rata_rata_kelas, ketuntasan_persen, jumlah_siswa, jumlah_tuntas, jumlah_remedial, catatan_ai) VALUES
+  ('ANL-001', 'walikelas1', 'XII MIPA 1', 86.48, 80.00, 5, 4, 1, 'Tingkat ketuntasan kumulatif kelas berada pada kategori baik. Diperlukan pendampingan khusus untuk 1 siswa pada materi turunan rantai.'),
+  ('ANL-002', 'walikelas2', 'XII MIPA 2', 72.60, 50.00, 2, 1, 1, 'Perlu peningkatan signifikan. 1 dari 2 siswa membutuhkan remedial.'),
+  ('ANL-003', 'walikelas3', 'XI MIPA 1', 89.05, 100.00, 2, 2, 0, 'Seluruh siswa mencapai KKM. Pertahankan capaian ini dan berikan pengayaan materi.'),
+  ('ANL-004', 'walikelas4', 'X MIPA 1', 92.50, 100.00, 1, 1, 0, 'Siswa menunjukkan performa sangat baik. Siap untuk materi tingkat lanjut.')
+ON CONFLICT (teacher_username, kelas) DO NOTHING;
 
 -- Pengaturan Sekolah (4 Guru)
 INSERT INTO public.school_settings (teacher_username, nama_sekolah, tahun_ajaran, kkm_default, kurikulum, ai_model, auto_wa_alert) VALUES
@@ -570,4 +605,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 --   Username: walikelas2  |  Password: 123456
 --   Username: walikelas3  |  Password: 123456
 --   Username: walikelas4  |  Password: 123456
+-- =========================================================
+-- CATATAN: Setiap guru hanya akan melihat data miliknya sendiri.
+-- Data antar guru sudah terisolasi melalui kolom teacher_username.
 -- =========================================================

@@ -8,7 +8,7 @@ import {
 import { saveStudentSupabase, deleteStudentSupabase } from '../lib/supabase';
 
 
-export default function DataSiswaView({ students, setStudents, classes }) {
+export default function DataSiswaView({ currentUser, students, setStudents, classes }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('Semua Kelas');
   const [selectedGender, setSelectedGender] = useState('Semua Gender');
@@ -80,15 +80,20 @@ export default function DataSiswaView({ students, setStudents, classes }) {
 
     if (editingStudent) {
       const updated = { ...formData, id: editingStudent.id };
-      saveStudentSupabase(updated);
+      saveStudentSupabase(currentUser?.username, updated);
       setStudents(students.map(s => s.id === editingStudent.id ? updated : s));
       showToast(`Data siswa "${formData.nama}" berhasil diperbarui!`);
     } else {
+      const maxIdNum = students.reduce((max, s) => {
+        const num = parseInt((s.id || '').replace(/\D/g, ''), 10);
+        return !isNaN(num) ? Math.max(max, num) : max;
+      }, 0);
+
       const newStudent = {
         ...formData,
-        id: `STU-${String(students.length + 1).padStart(3, '0')}`
+        id: `STU-${String(maxIdNum + 1).padStart(3, '0')}`
       };
-      saveStudentSupabase(newStudent);
+      saveStudentSupabase(currentUser?.username, newStudent);
       setStudents([...students, newStudent]);
       showToast(`Siswa baru "${formData.nama}" berhasil ditambahkan!`);
     }
@@ -98,7 +103,7 @@ export default function DataSiswaView({ students, setStudents, classes }) {
   // Delete student
   const handleDelete = (id, nama) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus data siswa "${nama}"?`)) {
-      deleteStudentSupabase(id);
+      deleteStudentSupabase(currentUser?.username, id);
       setStudents(students.filter(s => s.id !== id));
       if (detailStudent && detailStudent.id === id) {
         setDetailStudent(null);
@@ -107,50 +112,68 @@ export default function DataSiswaView({ students, setStudents, classes }) {
     }
   };
 
-  // Action: Download Template CSV
+  // Action: Download Template CSV (Enhanced with UTF-8 BOM & multi-format support)
   const handleDownloadTemplate = () => {
+    const bom = '\uFEFF';
     const csvHeader = 'nisn,nama,kelas,gender,email,namaOrtu,phoneOrtu,alamat,catatan\n';
     const sampleRow1 = '0059998801,Kania Salsabila,XII MIPA 1,Perempuan,kania@siswa.belajar.id,Bpk. Setyawan,081299887701,Jl. Melati No. 10,Siswa rajin dan berprestasi\n';
     const sampleRow2 = '0059998802,Muhammad Arifin,XII MIPA 1,Laki-Laki,arifin@siswa.belajar.id,Ibu Suhartini,081299887702,Jl. Mawar No. 15,Aktif kegiatan ekskul olahraga\n';
-    
-    const blob = new Blob([csvHeader + sampleRow1 + sampleRow2], { type: 'text/csv;charset=utf-8;' });
+    const sampleRow3 = '0059998803,Nadia Rahmawati,XII MIPA 2,Perempuan,nadia@siswa.belajar.id,Bpk. Hendra Pratama,081299887703,Jl. Anggrek No. 5,Membutuhkan bimbingan tambahan\n';
+
+    const blob = new Blob([bom + csvHeader + sampleRow1 + sampleRow2 + sampleRow3], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'Template_Data_Siswa_GuruAIPro.csv');
+    link.setAttribute('download', 'Template_Data_Siswa_DigitalGuru.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    showToast('Template Data Siswa (CSV) Berhasil Diunduh!');
+    showToast('Template Data Siswa (CSV/Excel) Berhasil Diunduh!');
   };
 
-  // Parse CSV text for Import Modal Preview
+  // Parse CSV text for Import Modal Preview (Supports auto-delimiter detection & quote stripping)
   const handleParseCsv = (text) => {
     setImportCsvText(text);
-    const lines = text.trim().split('\n');
+    if (!text || !text.trim()) {
+      setParsedPreview([]);
+      return;
+    }
+
+    const lines = text.trim().split(/\r?\n/);
     if (lines.length <= 1) {
       setParsedPreview([]);
       return;
     }
 
+    // Auto-detect delimiter: comma (,), semicolon (;), or tab (\t)
+    const firstLine = lines[0];
+    let delimiter = ',';
+    if (firstLine.includes(';')) delimiter = ';';
+    else if (firstLine.includes('\t')) delimiter = '\t';
+
     const rows = [];
-    // Skip header line
+    const cleanVal = (v) => (v || '').trim().replace(/^["']|["']$/g, '');
+
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      const cols = line.split(',');
+      
+      const cols = line.split(delimiter).map(cleanVal);
       if (cols.length >= 2) {
+        // Skip header if line matches header row
+        if (cols[0].toLowerCase() === 'nisn' || cols[1].toLowerCase() === 'nama') continue;
+
         rows.push({
-          nisn: cols[0]?.trim() || `005${Math.floor(1000000 + Math.random() * 9000000)}`,
-          nama: cols[1]?.trim() || 'Siswa Baru',
-          kelas: cols[2]?.trim() || classes[0] || 'XII MIPA 1',
-          gender: cols[3]?.trim() || 'Laki-Laki',
-          email: cols[4]?.trim() || '',
-          namaOrtu: cols[5]?.trim() || '',
-          phoneOrtu: cols[6]?.trim() || '',
-          alamat: cols[7]?.trim() || '',
-          catatan: cols[8]?.trim() || 'Hasil Impor Data',
+          nisn: cols[0] || `005${Math.floor(1000000 + Math.random() * 9000000)}`,
+          nama: cols[1] || 'Siswa Baru',
+          kelas: cols[2] || classes[0] || 'XII MIPA 1',
+          gender: cols[3] || 'Laki-Laki',
+          email: cols[4] || '',
+          namaOrtu: cols[5] || '',
+          phoneOrtu: cols[6] || '',
+          alamat: cols[7] || '',
+          catatan: cols[8] || 'Hasil Impor Data',
           status: 'Aktif'
         });
       }
@@ -170,20 +193,25 @@ export default function DataSiswaView({ students, setStudents, classes }) {
     reader.readAsText(file);
   };
 
-  // Execute Import Data
+  // Execute Import Data safely without ID collisions
   const handleExecuteImport = () => {
     if (parsedPreview.length === 0) {
       alert('Tidak ada data siswa valid untuk diimpor.');
       return;
     }
 
+    const maxIdNum = students.reduce((max, s) => {
+      const num = parseInt((s.id || '').replace(/\D/g, ''), 10);
+      return !isNaN(num) ? Math.max(max, num) : max;
+    }, 0);
+
     const newStudentsList = parsedPreview.map((item, idx) => ({
       ...item,
-      id: `STU-${String(students.length + idx + 1).padStart(3, '0')}`
+      id: `STU-${String(maxIdNum + idx + 1).padStart(3, '0')}`
     }));
 
-    newStudentsList.forEach(s => saveStudentSupabase(s));
-    setStudents([...students, ...newStudentsList]);
+    newStudentsList.forEach(s => saveStudentSupabase(currentUser?.username, s));
+    setStudents(prev => [...prev, ...newStudentsList]);
     setIsImportModalOpen(false);
     setImportCsvText('');
     setParsedPreview([]);

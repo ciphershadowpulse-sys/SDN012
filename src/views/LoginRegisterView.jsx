@@ -4,7 +4,7 @@ import {
   Sparkles, Lock, User, UserPlus, LogIn, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { INITIAL_CLASSES } from '../data/initialData';
-import { isSupabaseConfigured, saveUserAccountSupabase, loginUserSupabase } from '../lib/supabase';
+import { isSupabaseConfigured, registerUserSupabase, loginUserSupabase } from '../lib/supabase';
 
 export default function LoginRegisterView({ userAccounts, setUserAccounts, onLoginSuccess }) {
   const [activeMode, setActiveMode] = useState('login'); // 'login' | 'register'
@@ -86,19 +86,19 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
       return;
     }
 
-    // Check if username already exists
+    // Check if username already exists in local list
     if (userAccounts.some(u => u.username.toLowerCase() === regData.username.trim().toLowerCase())) {
       setRegError(`Username "${regData.username}" sudah terdaftar di sistem!`);
       return;
     }
 
     const newUser = {
-      id: `USR-${String(userAccounts.length + 1).padStart(3, '0')}`,
+      id: `USR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
       username: regData.username.trim(),
       password: regData.password,
       nama: regData.nama.trim(),
       nip: regData.nip.trim() || '-',
-      kelasBinaan: regData.kelasBinaan,
+      kelasBinaan: regData.kelasBinaan || 'XII MIPA 1',
       role: 'Wali Kelas',
       email: regData.email.trim() || '',
       phone: regData.phone.trim() || ''
@@ -106,11 +106,17 @@ export default function LoginRegisterView({ userAccounts, setUserAccounts, onLog
 
     setIsLoading(true);
 
-    await saveUserAccountSupabase(newUser);
+    const res = await registerUserSupabase(newUser);
+    if (res && res.success === false) {
+      setIsLoading(false);
+      setRegError(res.error || 'Gagal mendaftarkan akun ke Supabase.');
+      return;
+    }
+
     setUserAccounts(prev => [...prev, newUser]);
     setIsLoading(false);
 
-    setRegSuccess(`Akun Wali Kelas "${newUser.nama}" untuk ${newUser.kelasBinaan} Berhasil Didaftarkan ke Database! Silakan Login.`);
+    setRegSuccess(`Akun Wali Kelas "${newUser.nama}" untuk ${newUser.kelasBinaan} Berhasil Didaftarkan! Silakan Login.`);
 
     // Switch to login tab and prefill username
     setLoginUsername(newUser.username);
