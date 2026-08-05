@@ -38,15 +38,15 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
     const gradeRec = grades.find(g => g.studentId === student.id && g.mapel === selectedSubject) || {
       studentId: student.id,
       mapel: selectedSubject,
-      tugas1: 80,
-      tugas2: 80,
-      uh: 80,
-      uts: 80,
-      uas: 80,
-      nilaiAkhir: 80,
-      predikat: 'B',
-      status: 'Tuntas',
-      catatanAi: 'Pemahaman konsep dasar pembelajaran berada pada tingkat yang baik.'
+      tugas1: '',
+      tugas2: '',
+      uh: '',
+      uts: '',
+      uas: '',
+      nilaiAkhir: 0,
+      predikat: '-',
+      status: 'Belum Dinilai',
+      catatanAi: ''
     };
 
     return {
@@ -63,25 +63,35 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
     return matchesSearch && matchesClass;
   });
 
-  // Calculate stats
+  // Calculate stats based on students who actually have grades evaluated
+  const evaluatedGrades = filteredGrades.filter(g => g.grade.status !== 'Belum Dinilai');
   const totalCount = filteredGrades.length;
-  const avgScore = totalCount > 0 
-    ? (filteredGrades.reduce((acc, curr) => acc + curr.grade.nilaiAkhir, 0) / totalCount).toFixed(1)
-    : '0';
+  const evalCount = evaluatedGrades.length;
 
-  const maxScore = totalCount > 0 
-    ? Math.max(...filteredGrades.map(g => g.grade.nilaiAkhir)).toFixed(1)
-    : '0';
+  const avgScore = evalCount > 0 
+    ? (evaluatedGrades.reduce((acc, curr) => acc + (Number(curr.grade.nilaiAkhir) || 0), 0) / evalCount).toFixed(1)
+    : '0.0';
 
-  const minScore = totalCount > 0 
-    ? Math.min(...filteredGrades.map(g => g.grade.nilaiAkhir)).toFixed(1)
-    : '0';
+  const maxScore = evalCount > 0 
+    ? Math.max(...evaluatedGrades.map(g => Number(g.grade.nilaiAkhir) || 0)).toFixed(1)
+    : '0.0';
+
+  const minScore = evalCount > 0 
+    ? Math.min(...evaluatedGrades.map(g => Number(g.grade.nilaiAkhir) || 0)).toFixed(1)
+    : '0.0';
 
   const passedCount = filteredGrades.filter(g => g.grade.status === 'Tuntas').length;
-  const passPercentage = totalCount > 0 ? Math.round((passedCount / totalCount) * 100) : 100;
+  const passPercentage = evalCount > 0 ? Math.round((passedCount / evalCount) * 100) : 0;
 
   // Grade calculation helper
   const calculateGradeDetails = (t1, t2, uh, uts, uas) => {
+    const inputs = [t1, t2, uh, uts, uas];
+    const hasInput = inputs.some(v => v !== '' && v !== null && v !== undefined && !isNaN(v));
+
+    if (!hasInput) {
+      return { finalScore: 0, predikat: '-', status: 'Belum Dinilai' };
+    }
+
     const score1 = Number(t1) || 0;
     const score2 = Number(t2) || 0;
     const scoreUh = Number(uh) || 0;
@@ -103,7 +113,7 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
 
   // Score Input Change
   const handleScoreChange = (studentId, field, value) => {
-    const val = Math.min(100, Math.max(0, Number(value) || 0));
+    const val = value === '' ? '' : Math.min(100, Math.max(0, Number(value) || 0));
 
     setGrades(prevGrades => {
       const studentObj = students.find(s => s.id === studentId);
@@ -135,11 +145,11 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
           nama: studentObj?.nama || '',
           kelas: studentObj?.kelas || '',
           mapel: selectedSubject,
-          tugas1: 80,
-          tugas2: 80,
-          uh: 80,
-          uts: 80,
-          uas: 80,
+          tugas1: '',
+          tugas2: '',
+          uh: '',
+          uts: '',
+          uas: '',
           [field]: val
         };
         const { finalScore, predikat, status } = calculateGradeDetails(
@@ -457,7 +467,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           type="number"
                           min="0"
                           max="100"
-                          value={g.tugas1}
+                          placeholder="-"
+                          value={g.tugas1 !== undefined && g.tugas1 !== null ? g.tugas1 : ''}
                           onChange={(e) => handleScoreChange(item.id, 'tugas1', e.target.value)}
                           className="w-16 bg-darkBg border border-cardBorder rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-primaryPurple font-semibold"
                         />
@@ -469,7 +480,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           type="number"
                           min="0"
                           max="100"
-                          value={g.tugas2}
+                          placeholder="-"
+                          value={g.tugas2 !== undefined && g.tugas2 !== null ? g.tugas2 : ''}
                           onChange={(e) => handleScoreChange(item.id, 'tugas2', e.target.value)}
                           className="w-16 bg-darkBg border border-cardBorder rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-primaryPurple font-semibold"
                         />
@@ -481,7 +493,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           type="number"
                           min="0"
                           max="100"
-                          value={g.uh}
+                          placeholder="-"
+                          value={g.uh !== undefined && g.uh !== null ? g.uh : ''}
                           onChange={(e) => handleScoreChange(item.id, 'uh', e.target.value)}
                           className="w-16 bg-darkBg border border-cardBorder rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-primaryPurple font-semibold"
                         />
@@ -493,7 +506,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           type="number"
                           min="0"
                           max="100"
-                          value={g.uts}
+                          placeholder="-"
+                          value={g.uts !== undefined && g.uts !== null ? g.uts : ''}
                           onChange={(e) => handleScoreChange(item.id, 'uts', e.target.value)}
                           className="w-16 bg-darkBg border border-cardBorder rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-primaryPurple font-semibold"
                         />
@@ -505,7 +519,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           type="number"
                           min="0"
                           max="100"
-                          value={g.uas}
+                          placeholder="-"
+                          value={g.uas !== undefined && g.uas !== null ? g.uas : ''}
                           onChange={(e) => handleScoreChange(item.id, 'uas', e.target.value)}
                           className="w-16 bg-darkBg border border-cardBorder rounded-lg px-2 py-1 text-xs text-center text-white focus:outline-none focus:border-primaryPurple font-semibold"
                         />
@@ -513,7 +528,7 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
 
                       {/* Nilai Akhir */}
                       <td className="py-4 px-4 text-center font-bold text-base text-white">
-                        {g.nilaiAkhir}
+                        {g.nilaiAkhir > 0 ? g.nilaiAkhir : '-'}
                       </td>
 
                       {/* Predikat */}
@@ -522,7 +537,8 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                           g.predikat === 'A' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
                           g.predikat === 'B' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                           g.predikat === 'C' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                          'bg-red-500/20 text-red-400 border border-red-500/30'
+                          g.predikat === 'D' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                          'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                         }`}>
                           {g.predikat}
                         </span>
@@ -533,7 +549,9 @@ export default function PenilaianView({ currentUser, students, classes, grades, 
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                           g.status === 'Tuntas'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : g.status === 'Remidial'
+                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                         }`}>
                           {g.status}
                         </span>

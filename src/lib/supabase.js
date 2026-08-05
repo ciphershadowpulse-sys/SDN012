@@ -450,23 +450,36 @@ export async function fetchLessonPlansSupabase(teacherUsername, defaultPlans) {
       .select('*')
       .eq('teacher_username', teacherUsername);
     if (error || !data || data.length === 0) return defaultPlans;
-    return data.map(p => ({
-      id: p.id,
-      judul: p.judul,
-      kelas: p.kelas,
-      mapel: p.mapel,
-      fase: p.fase || 'Fase F',
-      kurikulum: p.kurikulum || 'Kurikulum Merdeka',
-      alokasiWaktu: p.alokasi_waktu || p.alokasiWaktu || '',
-      penulis: p.penulis || '',
-      tanggal: p.tanggal || '',
-      format: p.format || 'PDF',
-      ringkasan: p.ringkasan,
-      tujuan: p.tujuan || '',
-      langkah: p.langkah || [],
-      fileUrl: p.file_url || p.fileUrl || '/docs/modul_vektor.pdf',
-      status: p.status || 'Terverifikasi'
-    }));
+    return data.map(p => {
+      let parsedLangkah = [];
+      if (Array.isArray(p.langkah)) {
+        parsedLangkah = p.langkah;
+      } else if (typeof p.langkah === 'string') {
+        try {
+          parsedLangkah = JSON.parse(p.langkah);
+        } catch (e) {
+          parsedLangkah = [p.langkah];
+        }
+      }
+
+      return {
+        id: p.id,
+        judul: p.judul,
+        kelas: p.kelas,
+        mapel: p.mapel,
+        fase: p.fase || 'Fase F',
+        kurikulum: p.kurikulum || 'Kurikulum Merdeka',
+        alokasiWaktu: p.alokasi_waktu || p.alokasiWaktu || '',
+        penulis: p.penulis || '',
+        tanggal: p.tanggal || '',
+        format: p.format || 'PDF',
+        ringkasan: p.ringkasan || '',
+        tujuan: p.tujuan || '',
+        langkah: parsedLangkah,
+        fileUrl: p.file_url || p.fileUrl || '/docs/modul_vektor.pdf',
+        status: p.status || 'Terverifikasi'
+      };
+    });
   } catch (err) {
     console.warn('Gagal memuat modul/RPP dari Supabase:', err);
     return defaultPlans;
@@ -501,6 +514,22 @@ export async function saveLessonPlanSupabase(teacherUsername, plan) {
     return { success: true, data, mode: 'supabase' };
   } catch (err) {
     console.error('Gagal menyimpan modul/RPP ke Supabase:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteLessonPlanSupabase(teacherUsername, planId) {
+  if (!isSupabaseConfigured || !supabase) return { success: true, mode: 'local' };
+  try {
+    const { error } = await supabase
+      .from('lesson_plans')
+      .delete()
+      .eq('id', planId)
+      .eq('teacher_username', teacherUsername);
+    if (error) throw error;
+    return { success: true, mode: 'supabase' };
+  } catch (err) {
+    console.error('Gagal menghapus modul/RPP dari Supabase:', err);
     return { success: false, error: err.message };
   }
 }

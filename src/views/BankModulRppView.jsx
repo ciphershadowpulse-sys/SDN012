@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Sparkles, Download, Search, Filter, Plus, 
-  Eye, BookOpen, Check, X, Copy, FileCode, CheckCircle2
+  Eye, BookOpen, Check, X, Copy, FileCode, CheckCircle2,
+  Edit3, Trash2
 } from 'lucide-react';
 import { 
   isSupabaseConfigured, 
   fetchLessonPlansSupabase, 
-  saveLessonPlanSupabase 
+  saveLessonPlanSupabase,
+  deleteLessonPlanSupabase
 } from '../lib/supabase';
 
 const initialDocuments = [
@@ -86,6 +88,22 @@ export default function BankModulRppView({ currentUser, classes }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Manual Document Modal State (Add & Edit)
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
+  const [manualForm, setManualForm] = useState({
+    judul: '',
+    kurikulum: 'Kurikulum Merdeka',
+    kelas: classes[0] || 'XII MIPA 1',
+    mapel: 'Matematika Peminatan',
+    alokasiWaktu: '4 JP (2 Pertemuan)',
+    penulis: currentUser?.nama || 'Guru Mapel',
+    format: 'PDF / DOCX',
+    ringkasan: '',
+    tujuan: '',
+    langkahText: ''
+  });
+
   // Form AI Generator State
   const [aiForm, setAiForm] = useState({
     topik: '',
@@ -108,6 +126,92 @@ export default function BankModulRppView({ currentUser, classes }) {
   const handleOpenPreview = (doc) => {
     setActiveDoc(doc);
     setIsPreviewOpen(true);
+  };
+
+  // Open Manual Add Modal
+  const handleOpenAddModal = () => {
+    setEditingDoc(null);
+    setManualForm({
+      judul: '',
+      kurikulum: 'Kurikulum Merdeka',
+      kelas: classes[0] || 'XII MIPA 1',
+      mapel: 'Matematika Peminatan',
+      alokasiWaktu: '4 JP (2 Pertemuan)',
+      penulis: currentUser?.nama || 'Guru Mapel',
+      format: 'PDF / DOCX',
+      ringkasan: '',
+      tujuan: '',
+      langkahText: ''
+    });
+    setIsManualModalOpen(true);
+  };
+
+  // Open Manual Edit Modal
+  const handleOpenEditModal = (doc) => {
+    setEditingDoc(doc);
+    setManualForm({
+      judul: doc.judul || '',
+      kurikulum: doc.kurikulum || 'Kurikulum Merdeka',
+      kelas: doc.kelas || classes[0] || 'XII MIPA 1',
+      mapel: doc.mapel || 'Matematika Peminatan',
+      alokasiWaktu: doc.alokasiWaktu || '4 JP (2 Pertemuan)',
+      penulis: doc.penulis || currentUser?.nama || 'Guru Mapel',
+      format: doc.format || 'PDF / DOCX',
+      ringkasan: doc.ringkasan || '',
+      tujuan: doc.tujuan || '',
+      langkahText: Array.isArray(doc.langkah) ? doc.langkah.join('\n') : (doc.langkah || '')
+    });
+    setIsManualModalOpen(true);
+  };
+
+  // Submit Manual Form (Add or Edit)
+  const handleSaveManualDoc = async (e) => {
+    e.preventDefault();
+    if (!manualForm.judul.trim()) {
+      alert('Mohon masukkan judul dokumen RPP/Modul!');
+      return;
+    }
+
+    const langkahArray = manualForm.langkahText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+
+    const docObj = {
+      id: editingDoc ? editingDoc.id : `RPP-${Date.now()}`,
+      judul: manualForm.judul.trim(),
+      kurikulum: manualForm.kurikulum,
+      kelas: manualForm.kelas,
+      mapel: manualForm.mapel.trim(),
+      alokasiWaktu: manualForm.alokasiWaktu.trim(),
+      penulis: manualForm.penulis.trim(),
+      tanggal: editingDoc ? editingDoc.tanggal : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      format: manualForm.format,
+      ringkasan: manualForm.ringkasan.trim(),
+      tujuan: manualForm.tujuan.trim(),
+      langkah: langkahArray.length > 0 ? langkahArray : ['Kegiatan Pembelajaran Mandiri & Diskusi Kelompok.']
+    };
+
+    saveLessonPlanSupabase(currentUser?.username, docObj);
+
+    if (editingDoc) {
+      setDocuments(prev => prev.map(d => d.id === docObj.id ? docObj : d));
+      showToast(`Dokumen RPP "${docObj.judul}" berhasil diperbarui dan disimpan ke Supabase!`);
+    } else {
+      setDocuments(prev => [docObj, ...prev]);
+      showToast(`Dokumen RPP "${docObj.judul}" berhasil ditambahkan dan disimpan ke Supabase!`);
+    }
+
+    setIsManualModalOpen(false);
+  };
+
+  // Handle Delete Document
+  const handleDeleteDoc = async (docId, docTitle) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus dokumen "${docTitle}"?`)) {
+      await deleteLessonPlanSupabase(currentUser?.username, docId);
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+      showToast(`Dokumen "${docTitle}" telah dihapus.`);
+    }
   };
 
   // Handle AI Generator Submit
@@ -140,7 +244,7 @@ export default function BankModulRppView({ currentUser, classes }) {
       };
 
       saveLessonPlanSupabase(currentUser?.username, newDoc);
-      setDocuments([newDoc, ...documents]);
+      setDocuments(prev => [newDoc, ...prev]);
       setIsGenerating(false);
       setIsAiModalOpen(false);
       setActiveDoc(newDoc);
@@ -188,12 +292,21 @@ export default function BankModulRppView({ currentUser, classes }) {
           </p>
         </div>
 
-        <button 
-          onClick={() => setIsAiModalOpen(true)}
-          className="bg-gradient-to-r from-primaryPurple to-accentBlue px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xl shadow-purple-500/30 flex items-center gap-2 hover:opacity-90 transition shrink-0"
-        >
-          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Generate RPP Otomatis AI
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button 
+            onClick={handleOpenAddModal}
+            className="bg-cardBg hover:bg-cardBorder border border-cardBorder px-4 py-3 rounded-xl text-xs sm:text-sm font-bold text-white flex items-center gap-2 transition"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" /> Tambah Modul Manual
+          </button>
+
+          <button 
+            onClick={() => setIsAiModalOpen(true)}
+            className="bg-gradient-to-r from-primaryPurple to-accentBlue px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-white shadow-xl shadow-purple-500/30 flex items-center gap-2 hover:opacity-90 transition"
+          >
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Generate RPP Otomatis AI
+          </button>
+        </div>
       </div>
 
       {/* FILTER & SEARCH TOOLBAR */}
@@ -282,6 +395,22 @@ export default function BankModulRppView({ currentUser, classes }) {
                   <Eye className="w-3.5 h-3.5 text-accentBlue" /> Pratinjau
                 </button>
                 
+                <button 
+                  onClick={() => handleOpenEditModal(doc)}
+                  className="bg-darkBg hover:bg-cardBorder border border-cardBorder text-purple-300 p-2.5 rounded-xl text-xs transition"
+                  title="Edit Dokumen RPP"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+
+                <button 
+                  onClick={() => handleDeleteDoc(doc.id, doc.judul)}
+                  className="bg-darkBg hover:bg-red-500/10 border border-cardBorder text-red-400 p-2.5 rounded-xl text-xs transition"
+                  title="Hapus Dokumen RPP"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+
                 <button 
                   onClick={() => showToast(`Mengunduh dokumen "${doc.judul}"...`)}
                   className="bg-primaryPurple hover:bg-primaryPurple/80 text-white p-2.5 rounded-xl text-xs transition"
@@ -399,6 +528,173 @@ export default function BankModulRppView({ currentUser, classes }) {
                   >
                     <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                     {isGenerating ? 'Menyusun RPP AI...' : 'Buat RPP Sekarang'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL TAMBAH / EDIT RPP MANUAL */}
+      <AnimatePresence>
+        {isManualModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-cardBg border border-cardBorder rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl my-8"
+            >
+              <div className="px-6 py-4 border-b border-cardBorder flex items-center justify-between bg-darkBg/50">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primaryPurple" />
+                  <h3 className="font-bold text-lg text-white">
+                    {editingDoc ? 'Edit Dokumen RPP / Modul' : 'Tambah Dokumen RPP / Modul Manual'}
+                  </h3>
+                </div>
+                <button onClick={() => setIsManualModalOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveManualDoc} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Judul Dokumen RPP / Modul *</label>
+                  <input 
+                    type="text"
+                    required
+                    value={manualForm.judul}
+                    onChange={(e) => setManualForm({ ...manualForm, judul: e.target.value })}
+                    className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    placeholder="Contoh: RPP Modul Ajar — Persamaan Garis Singgung Lingkaran..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Kurikulum</label>
+                    <select 
+                      value={manualForm.kurikulum}
+                      onChange={(e) => setManualForm({ ...manualForm, kurikulum: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    >
+                      <option value="Kurikulum Merdeka">Kurikulum Merdeka</option>
+                      <option value="K13 Revisi">K13 Revisi</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Target Kelas</label>
+                    <select 
+                      value={manualForm.kelas}
+                      onChange={(e) => setManualForm({ ...manualForm, kelas: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    >
+                      {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Mata Pelajaran</label>
+                    <input 
+                      type="text"
+                      required
+                      value={manualForm.mapel}
+                      onChange={(e) => setManualForm({ ...manualForm, mapel: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Alokasi Waktu</label>
+                    <input 
+                      type="text"
+                      required
+                      value={manualForm.alokasiWaktu}
+                      onChange={(e) => setManualForm({ ...manualForm, alokasiWaktu: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                      placeholder="Contoh: 4 JP (2 Pertemuan)"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Nama Penulis / Guru</label>
+                    <input 
+                      type="text"
+                      value={manualForm.penulis}
+                      onChange={(e) => setManualForm({ ...manualForm, penulis: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">Format Dokumen</label>
+                    <select 
+                      value={manualForm.format}
+                      onChange={(e) => setManualForm({ ...manualForm, format: e.target.value })}
+                      className="w-full bg-darkBg border border-cardBorder rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    >
+                      <option value="PDF / DOCX">PDF / DOCX</option>
+                      <option value="PDF">PDF</option>
+                      <option value="DOCX">DOCX</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Ringkasan Modul / Deskripsi Singkat</label>
+                  <textarea 
+                    rows={2}
+                    value={manualForm.ringkasan}
+                    onChange={(e) => setManualForm({ ...manualForm, ringkasan: e.target.value })}
+                    className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    placeholder="Uraian ringkas materi & metode..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Tujuan Pembelajaran (TP)</label>
+                  <textarea 
+                    rows={2}
+                    value={manualForm.tujuan}
+                    onChange={(e) => setManualForm({ ...manualForm, tujuan: e.target.value })}
+                    className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple"
+                    placeholder="Contoh: Peserta didik mampu menganalisis..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Langkah-Langkah Pembelajaran (Gunakan enter untuk setiap langkah)
+                  </label>
+                  <textarea 
+                    rows={4}
+                    value={manualForm.langkahText}
+                    onChange={(e) => setManualForm({ ...manualForm, langkahText: e.target.value })}
+                    className="w-full bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primaryPurple font-mono text-xs"
+                    placeholder="Kegiatan Awal (15 menit): Pemantik kognitif...&#10;Kegiatan Inti (60 menit): Diskusi kelompok...&#10;Kegiatan Penutup (15 menit): Kuis..."
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-cardBorder flex justify-end gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsManualModalOpen(false)}
+                    className="px-5 py-2.5 rounded-xl border border-cardBorder text-gray-300 hover:text-white transition text-sm"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    type="submit"
+                    className="bg-primaryPurple hover:bg-primaryPurple/90 px-6 py-2.5 rounded-xl text-white font-bold shadow-lg shadow-purple-500/20 text-sm flex items-center gap-2 transition"
+                  >
+                    <Check className="w-4 h-4" />
+                    {editingDoc ? 'Simpan Perubahan' : 'Tambah Modul Sekarang'}
                   </button>
                 </div>
               </form>
