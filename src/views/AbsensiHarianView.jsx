@@ -54,8 +54,8 @@ export default function AbsensiHarianView({
   const scannerContainerRef = useRef(null);
   const isProcessingRef = useRef(false);
 
-  // Class Students list
-  const classStudents = students.filter(s => s.kelas === selectedClass);
+  // ALL Students list across all classes
+  const classStudents = students;
 
   useEffect(() => {
     let isMounted = true;
@@ -205,13 +205,16 @@ export default function AbsensiHarianView({
         const timeString = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
         // Mark as Hadir
-        setAttendanceRecords(prev => ({
-          ...prev,
+        const updatedRecords = {
+          ...attendanceRecords,
           [matched.id]: {
             status: 'Hadir',
             catatan: `Scan QR Presensi (${timeString} WIB)`
           }
-        }));
+        };
+        setAttendanceRecords(updatedRecords);
+
+
 
         // ADD TO VISIBLE SCANNED LIST (PERSISTENT IN APP STATE)
         if (!scannedStudentIds.includes(matched.id)) {
@@ -229,18 +232,31 @@ export default function AbsensiHarianView({
 
         setLastScanned(scanResult);
         setScannedSessionList(prev => [scanResult, ...prev.filter(x => x.id !== matched.id)]);
-        triggerToast(`QR Terbaca: ${matched.nama} (${matched.kelas}) HADIR!`);
+
+        // Auto save scan record immediately to Supabase
+        if (currentUser?.username) {
+          saveDailyAttendanceSupabase(
+            currentUser.username,
+            updatedRecords,
+            students.filter(s => s.kelas === matched.kelas),
+            matched.kelas,
+            selectedDate
+          );
+        }
+
+        triggerToast(`QR Terbaca: ${matched.nama} (${matched.kelas}) HADIR & Tersimpan ke Cloud!`);
       } else {
-        triggerToast(`⚠️ Kode QR "${qrCodeInput}" tidak terdaftar.`);
+        triggerToast(`⚠️ Kode QR "${qrCodeInput}" tidak terdaftar di data siswa.`);
       }
     }, 400);
-  }, [students, scannedStudentIds, setAttendanceRecords, setScannedStudentIds, setScannedSessionList]);
+  }, [students, selectedClass, selectedDate, currentUser, attendanceRecords, scannedStudentIds, setAttendanceRecords, setScannedStudentIds, setScannedSessionList]);
 
   // ==========================================
   // CAMERA QR SCANNER (html5-qrcode)
   // ==========================================
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (overrideFacingMode = null) => {
     setCameraError(null);
+    const targetFacingMode = overrideFacingMode || facingMode;
 
     // Cleanup existing scanner instance
     if (html5QrCodeRef.current) {
@@ -279,16 +295,23 @@ export default function AbsensiHarianView({
         qrbox: { width: 200, height: 200 },
         aspectRatio: 1.0,
         disableFlip: false,
-        rememberLastUsedCamera: true,
         supportedScanTypes: [0], // SCAN_TYPE_CAMERA only
       };
 
       await html5QrCode.start(
-        { facingMode },
+        { facingMode: { exact: targetFacingMode } },
         config,
         qrCodeSuccessCallback,
         () => { } // ignore error (no QR found in frame)
-      );
+      ).catch(async () => {
+        // Fallback without exact constraint if device restricts exact mode
+        await html5QrCode.start(
+          { facingMode: targetFacingMode },
+          config,
+          qrCodeSuccessCallback,
+          () => { }
+        );
+      });
 
       setIsCameraActive(true);
     } catch (err) {
@@ -340,9 +363,13 @@ export default function AbsensiHarianView({
 
   // Toggle camera facing mode
   const toggleCameraFacing = useCallback(async () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
     await stopCamera();
-    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-  }, [stopCamera]);
+    setTimeout(() => {
+      startCamera(nextMode);
+    }, 200);
+  }, [facingMode, stopCamera, startCamera]);
 
   // Start camera when scanner tab is 'camera' and modal is open
   useEffect(() => {
@@ -437,32 +464,18 @@ export default function AbsensiHarianView({
         )}
       </AnimatePresence>
 
-      {/* HEADER CONTROLS */}
+      {/* HEADER CONTROLS — HANYA TANGGAL/BULAN/TAHUN */}
       <div className="bg-cardBg border border-cardBorder p-4 sm:p-6 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-4 sm:gap-6">
         <div className="flex flex-wrap items-center gap-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Pilih Kelas</label>
-            <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
-              <Filter className="w-4 h-4 text-primaryPurple" />
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
-              >
-                {classes.map(c => <option key={c} value={c} className="bg-cardBg">{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Tanggal Presensi</label>
-            <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-3 py-2">
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Tanggal Presensi (Hari/Bulan/Tahun)</label>
+            <div className="flex items-center gap-2 bg-darkBg border border-cardBorder rounded-xl px-4 py-2.5 shadow-inner">
               <Calendar className="w-4 h-4 text-accentBlue" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-white focus:outline-none cursor-pointer"
+                className="bg-transparent text-sm font-bold text-white focus:outline-none cursor-pointer"
               />
             </div>
           </div>
@@ -538,7 +551,7 @@ export default function AbsensiHarianView({
         <div className="px-6 py-4 border-b border-cardBorder bg-darkBg/60 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-sm text-white">
-              Input Presensi Siswa — Kelas {selectedClass} ({selectedDate})
+              Input Presensi Siswa — Semua Kelas ({selectedDate})
             </h3>
 
             {/* View Mode Toggle Button */}
@@ -547,7 +560,7 @@ export default function AbsensiHarianView({
               className="px-3 py-1 rounded-lg bg-darkBg border border-cardBorder text-gray-300 text-xs font-semibold flex items-center gap-1.5 hover:text-white transition"
             >
               {viewMode === 'only_scanned' ? <Eye className="w-3.5 h-3.5 text-accentBlue" /> : <EyeOff className="w-3.5 h-3.5 text-amber-400" />}
-              {viewMode === 'only_scanned' ? `Hanya Siswa Terscan (${scannedCount})` : `Semua Siswa Kelas (${totalCount})`}
+              {viewMode === 'only_scanned' ? `Hanya Siswa Terscan (${scannedCount})` : `Semua Siswa (${totalCount})`}
             </button>
           </div>
 

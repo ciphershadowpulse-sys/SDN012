@@ -403,7 +403,7 @@ export async function fetchTeachingSchedulesSupabase(teacherUsername, defaultSch
       jam: s.jam,
       kelas: s.kelas,
       mapel: s.mapel,
-      ruangan: s.ruangan,
+      ruang: s.ruang || s.ruangan,
       topik: s.topik,
       status: s.status || 'Belum Dimulai'
     }));
@@ -423,7 +423,7 @@ export async function saveTeachingScheduleSupabase(teacherUsername, schedule) {
       jam: schedule.jam,
       kelas: schedule.kelas,
       mapel: schedule.mapel,
-      ruangan: schedule.ruangan,
+      ruangan: schedule.ruang || schedule.ruangan,
       topik: schedule.topik,
       status: schedule.status || 'Belum Dimulai'
     };
